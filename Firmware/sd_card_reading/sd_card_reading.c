@@ -1,43 +1,57 @@
 #include <stdio.h>
+#include <string.h>
 #include "pico/stdlib.h"
-#include "hardware/spi.h"
+#include "ff.h"  // FatFS
 
-// SPI Defines
-// We are going to use SPI 1, and allocate it to the following GPIO pins
-// Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
-#define SPI_PORT spi1
-#define PIN_MISO 12
-#define PIN_CS   13
-#define PIN_SCK  10
-#define PIN_MOSI 11
-
-// D0 (DAT0) → GPIO 12 (MISO) - Data from SD to Pico
-// D3 (DAT3/CS) → GPIO 13 (CS) - Chip Select
-// CMD → GPIO 11 (MOSI) - Data from Pico to SD
-// CLK → GPIO 10 (SCK) - Clock signal
-// VSS/GND → GND - Ground
-// VDD → 3.3V - Power
-
-
+// Stub for FatFS get_fattime (RTC disabled)
+DWORD get_fattime(void) {
+    // Return a fixed date/time: Jan 1, 2026, 00:00:00
+    return ((2026 - 1980) << 25) | (1 << 21) | (1 << 16);
+}
 
 int main()
 {
     stdio_init_all();
-
-    // SPI initialisation. This example will use SPI at 1MHz.
-    spi_init(SPI_PORT, 1000*1000);
-    gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
-    gpio_set_function(PIN_CS,   GPIO_FUNC_SIO);
-    gpio_set_function(PIN_SCK,  GPIO_FUNC_SPI);
-    gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
     
-    // Chip select is active-low, so we'll initialise it to a driven-high state
-    gpio_set_dir(PIN_CS, GPIO_OUT);
-    gpio_put(PIN_CS, 1);
-    // For more examples of SPI use see https://github.com/raspberrypi/pico-examples/tree/master/spi
-
+    printf("SD Card FatFS Example\n");
+    
+    // FatFS objects
+    FATFS fs;
+    FIL fil;
+    FRESULT fr;
+    UINT bw;
+    
+    // Mount the SD card
+    fr = f_mount(&fs, "0:", 1);
+    if (fr != FR_OK) {
+        printf("ERROR: Could not mount filesystem (%d)\r\n", fr);
+        while (1) {
+            sleep_ms(1000);
+        }
+    }
+    printf("Filesystem mounted!\n");
+    
+    // Open a file for writing
+    fr = f_open(&fil, "0:/test.txt", FA_CREATE_ALWAYS | FA_WRITE);
+    if (fr != FR_OK) {
+        printf("ERROR: Could not open file (%d)\r\n", fr);
+    } else {
+        // Write to the file
+        const char *text = "Mazen says Hello from Pico! Mr.\n";
+        f_write(&fil, text, strlen(text), &bw);
+        printf("Wrote %d bytes to test.txt\n", bw);
+        
+        // Close the file
+        f_close(&fil);
+    }
+    
+    // Unmount
+    f_unmount("0:");
+    
+    printf("Done!\n");
+    
     while (true) {
-        printf("Hello, world!\n");
         sleep_ms(1000);
     }
 }
+

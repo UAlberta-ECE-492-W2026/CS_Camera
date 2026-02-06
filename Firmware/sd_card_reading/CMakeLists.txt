@@ -35,28 +35,33 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(sd_card_reading sd_card_reading.c )
+add_executable(sd_card_reading 
+    sd_card_reading.c 
+    hw_config.c
+)
+
+# add subdirectories
+add_subdirectory(lib/no-OS-FatFS/FatFs_SPI build) 
+
 
 pico_set_program_name(sd_card_reading "sd_card_reading")
 pico_set_program_version(sd_card_reading "0.1")
 
 # Modify the below lines to enable/disable output over UART/USB
+# WE DISABLED UART OUTPUT HERE
 pico_enable_stdio_uart(sd_card_reading 0)
-pico_enable_stdio_usb(sd_card_reading 0)
+pico_enable_stdio_usb(sd_card_reading 1)
 
-# Add the standard library to the build
-target_link_libraries(sd_card_reading
-        pico_stdlib)
+# Add the standard library to the build 
+target_link_libraries(sd_card_reading 
+        pico_stdlib
+        FatFs_SPI
+)
 
 # Add the standard include files to the build
 target_include_directories(sd_card_reading PRIVATE
         ${CMAKE_CURRENT_LIST_DIR}
 )
-
-# Add any user requested libraries
-target_link_libraries(sd_card_reading 
-        hardware_spi
-        )
 
 pico_add_extra_outputs(sd_card_reading)
 
