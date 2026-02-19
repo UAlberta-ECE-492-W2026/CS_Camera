@@ -1,16 +1,18 @@
-/* hw_config.c - Hardware configuration for SD card */
+/**
+ * Hardware Configuration for SD Card
+ */
 
-#include <string.h>
 #include "hw_config.h"
+#include <string.h>
 
 // Hardware Configuration of SPI "objects"
 static spi_t spis[] = {
     {
-        .hw_inst = spi1,      // SPI component
-        .miso_gpio = 12,      // GPIO 12 (Pin 16)
-        .mosi_gpio = 11,      // GPIO 11 (Pin 15) 
-        .sck_gpio = 10,       // GPIO 10 (Pin 14)
-        .baud_rate = 12500 * 1000  // 12.5 MHz
+        .hw_inst = spi1,          // SPI component
+        .miso_gpio = 12,          // GPIO 12 (Pin 16)
+        .mosi_gpio = 11,          // GPIO 11 (Pin 15) 
+        .sck_gpio = 10,           // GPIO 10 (Pin 14)
+        .baud_rate = 12500 * 1000 // 12.5 MHz
     }
 };
 
@@ -27,7 +29,8 @@ static sd_card_t sd_cards[] = {
 };
 
 /* ********************************************************************** */
-size_t sd_get_num() { 
+
+size_t sd_get_num(void) { 
     return sizeof(sd_cards) / sizeof(sd_cards[0]); 
 }
 
@@ -38,7 +41,7 @@ sd_card_t *sd_get_by_num(size_t num) {
     return NULL;
 }
 
-size_t spi_get_num() { 
+size_t spi_get_num(void) { 
     return sizeof(spis) / sizeof(spis[0]); 
 }
 
