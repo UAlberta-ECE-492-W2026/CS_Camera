@@ -1,128 +1,97 @@
-/**
- * SD Storage Module - Implementation
- */
-
-#include "sd_storage.h"
-#include "hw_config.h"
 #include <stdio.h>
 #include <string.h>
-#include "ff.h"  // FatFS
 
-static FATFS fs;
-static bool is_mounted = false;
+#include "ff.h" /* Obtains integer types */
+#include "hw_config.h"
+#include "sd_storage.h"
+#include "f_util.h"
 
-// Stub for FatFS get_fattime (RTC disabled)
-DWORD get_fattime(void) {
-    // Return a fixed date/time: Jan 1, 2026, 00:00:00
-    return ((2026 - 1980) << 25) | (1 << 21) | (1 << 16);
-}
 
-bool storage_init(void) {
-    FRESULT fr;
-    
-    // Mount the SD card
-    fr = f_mount(&fs, "0:", 1);
-    if (fr != FR_OK) {
-        printf("ERROR: Could not mount SD card filesystem (%d)\n", fr);
+static FATFS fs;  // File system object for each SD card.
+static bool initialized = false;
+
+
+bool sd_storage_init(void) {
+    if (initialized) {
+        return true;  // Already initialized
+    }
+
+    // Initialize the SD card hardware
+    if(!sd_init_driver()) {
+        printf("Failed to initialize SD card driver\n");
         return false;
     }
+
+    // Mount filesystem for the SD card
+    FRESULT res = f_mount(&fs, "0:", 1);
+    if (res != FR_OK) {
+        printf("Failed to mount SD card filesystem: %d\n", res);
+        return false;
+    }
+    initialized = true;
+    printf("SD card storage initialized successfully\n");
+    return true;
     
-    is_mounted = true;
-    printf("SD card mounted successfully\n");
+}
+
+bool sd_write_file(const char *filename, const uint8_t *data) {
+    if (!initialized) {
+        printf("SD storage not initialized\n");
+        return false;
+    }
+
+    FIL file;
+    FRESULT res = f_open(&file, filename, FA_WRITE | FA_CREATE_ALWAYS);
+    if (res != FR_OK) {
+        printf("Failed to open file for writing: %d\n", res);
+        return false;
+    }
+
+    UINT bytes_written;
+    res = f_write(&file, data, strlen((const char *)data), &bytes_written);
+    if (res != FR_OK || bytes_written != strlen((const char *)data)) {
+        printf("Failed to write to file: %d\n", res);
+        f_close(&file);
+        return false;
+    }
+
+    f_close(&file);
+    printf("File written successfully: %s\n", filename);
     return true;
 }
 
-int storage_write_file(const char *filename, const void *data, uint32_t size) {
-    if (!is_mounted) {
-        return -1;
+bool sd_read_file(const char *filename, uint8_t *buffer, size_t buffer_size) {
+    if (!initialized) {
+        printf("SD storage not initialized\n");
+        return false;
     }
-    
-    FIL fil;
-    FRESULT fr;
-    UINT bw;
-    
-    char path[256];
-    snprintf(path, sizeof(path), "0:/%s", filename);
-    
-    fr = f_open(&fil, path, FA_CREATE_ALWAYS | FA_WRITE);
-    if (fr != FR_OK) {
-        printf("ERROR: Could not open file %s (%d)\n", filename, fr);
-        return -1;
+
+    FIL file;
+    FRESULT res = f_open(&file, filename, FA_READ);
+    if (res != FR_OK) {
+        printf("Failed to open file for reading: %d\n", res);
+        return false;
     }
-    
-    fr = f_write(&fil, data, size, &bw);
-    f_close(&fil);
-    
-    if (fr != FR_OK) {
-        printf("ERROR: Could not write to file %s (%d)\n", filename, fr);
-        return -1;
+
+    UINT bytes_read;
+    res = f_read(&file, buffer, buffer_size - 1, &bytes_read);
+    if (res != FR_OK) {
+        printf("Failed to read from file: %d\n", res);
+        f_close(&file);
+        return false;
     }
-    
-    return (int)bw;
+
+    buffer[bytes_read] = '\0';  // Null-terminate the buffer
+    f_close(&file);
+    printf("File read successfully: %s\n", filename);
+    return true;
 }
 
-int storage_read_file(const char *filename, void *buffer, uint32_t size) {
-    if (!is_mounted) {
-        return -1;
-    }
-    
-    FIL fil;
-    FRESULT fr;
-    UINT br;
-    
-    char path[256];
-    snprintf(path, sizeof(path), "0:/%s", filename);
-    
-    fr = f_open(&fil, path, FA_READ);
-    if (fr != FR_OK) {
-        printf("ERROR: Could not open file %s (%d)\n", filename, fr);
-        return -1;
-    }
-    
-    fr = f_read(&fil, buffer, size, &br);
-    f_close(&fil);
-    
-    if (fr != FR_OK) {
-        printf("ERROR: Could not read from file %s (%d)\n", filename, fr);
-        return -1;
-    }
-    
-    return (int)br;
-}
-
-int storage_append_file(const char *filename, const void *data, uint32_t size) {
-    if (!is_mounted) {
-        return -1;
-    }
-    
-    FIL fil;
-    FRESULT fr;
-    UINT bw;
-    
-    char path[256];
-    snprintf(path, sizeof(path), "0:/%s", filename);
-    
-    // Open for append (create if doesn't exist)
-    fr = f_open(&fil, path, FA_OPEN_APPEND | FA_WRITE);
-    if (fr != FR_OK) {
-        printf("ERROR: Could not open file %s for append (%d)\n", filename, fr);
-        return -1;
-    }
-    
-    fr = f_write(&fil, data, size, &bw);
-    f_close(&fil);
-    
-    if (fr != FR_OK) {
-        printf("ERROR: Could not append to file %s (%d)\n", filename, fr);
-        return -1;
-    }
-    
-    return (int)bw;
-}
-
-void storage_deinit(void) {
-    if (is_mounted) {
-        f_unmount("0:");
-        is_mounted = false;
+void sd_storage_deinit(void)
+{
+    if(initialized){
+        f_unmount("0:");  // Unmount the filesystem
+        initialized = false;    
+        printf("SD card unmounted.\n");
     }
 }

@@ -32,17 +32,16 @@ project(cs_camera C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
-
+add_subdirectory(lib/no-OS-FatFS/FatFs_SPI build)
 # Add modules 
 # add subdirectory for each module to be included in the build 
 add_subdirectory(modules/display)
 add_subdirectory(modules/sensor)
-# add_subdirectory(modules/storage)
+add_subdirectory(modules/storage)
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(cs_camera cs_camera.c )
-
+add_executable(cs_camera cs_camera.c)
 pico_set_program_name(cs_camera "cs_camera")
 pico_set_program_version(cs_camera "0.1")
 
@@ -54,9 +53,10 @@ pico_enable_stdio_usb(cs_camera 1)
 # we add the display, sensor and storage modules as dependencies to ensure they are built before the main executable
 target_link_libraries(cs_camera
         pico_stdlib
+        FatFs_SPI
         display
         sensor
-        # storage
+        storage
 )
 
 # Add the standard include files to the build
