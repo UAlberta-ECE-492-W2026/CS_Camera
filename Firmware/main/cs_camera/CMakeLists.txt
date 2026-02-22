@@ -33,10 +33,14 @@ project(cs_camera C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
+# PREVENTS EXAMPLE CODE FROM BEING BUILT.
+set(ST7789_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
 # Add modules 
 # add subdirectory for each module to be included in the build 
 add_subdirectory(modules/display)
 add_subdirectory(modules/sensor)
+add_subdirectory(lib/st7789)
 # add_subdirectory(modules/storage)
 
 # Add executable. Default name is the project name, version 0.1
@@ -56,6 +60,7 @@ target_link_libraries(cs_camera
         pico_stdlib
         display
         sensor
+        pico_st7789
         # storage
 )
 

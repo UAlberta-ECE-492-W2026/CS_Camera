@@ -1,2 +1,9 @@
-build
-!.vscode/*
+# Build output
+build/
+cmake-build-*/
+
+# VS Code
+.vscode/
+
+# GitHub metadata
+.github/

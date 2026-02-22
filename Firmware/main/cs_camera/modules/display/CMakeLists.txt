@@ -1,7 +1,5 @@
-# Display Module CMakeLists
-
 add_library(display STATIC
-    lcd_driver.c
+    lcd_controller.c
 )
 
 target_include_directories(display PUBLIC
@@ -11,4 +9,5 @@ target_include_directories(display PUBLIC
 target_link_libraries(display
     pico_stdlib
     hardware_spi
+    pico_st7789
 )
