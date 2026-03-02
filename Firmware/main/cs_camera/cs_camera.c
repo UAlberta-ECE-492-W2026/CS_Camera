@@ -2,7 +2,6 @@
 #include "pico/stdlib.h"
 #include "photodiode.h"
 #include "lcd_controller.h"
-#include "photodiode.h" 
 #include "sd_storage.h"
 
 
