@@ -7,19 +7,21 @@
 
 int main()
 {
+    // TEST CODE ---------------------------------------------------------------
     stdio_init_all();
     sleep_ms(2000); // Wait for USB serial to initialize
     printf("going to initialize sensor\n");
     sensor_init();
     printf("sensor initialized\n");
 
-    // TESTING DISPLAY
+    // TESTING DISPLAY FOR 10 SECONDS
     display_init();
-    while (true) {
+    for (int i = 0; i < 10; i++) {
         display_fill(0x0000);
         sleep_ms(500);
         display_fill(0xffff);
         sleep_ms(500);
+    }
     
     if(!sd_storage_init()) {
         printf("Failed to initialize SD storage\n");
@@ -42,4 +44,29 @@ int main()
         
         sleep_ms(1000);
     }
+    // END OF TEST CODE --------------------------------------------------------
+
+
+
+    // INITIALIZATION
+    stdio_init_all();
+    
+    if (!display_init()) {
+        printf("Failed to initialize display\n");
+        return 1;
+    }
+
+    if (!sensor_init()) {
+        printf("Failed to initialize sensor\n");
+        return 1;
+    }
+
+    if (!sd_storage_init()) {
+        printf("Failed to initialize SD storage\n");
+        return 1;
+    }
+
+    //BUTTON
+
+    
 }
