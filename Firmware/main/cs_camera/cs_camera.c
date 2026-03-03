@@ -4,6 +4,7 @@
 #include "lcd_controller.h"
 #include "sd_storage.h"
 
+#define MASK_NUM 1000
 
 int main()
 {
@@ -50,7 +51,7 @@ int main()
 
     // INITIALIZATION
     stdio_init_all();
-    
+
     if (!display_init()) {
         printf("Failed to initialize display\n");
         return 1;
@@ -66,7 +67,27 @@ int main()
         return 1;
     }
 
-    //BUTTON
+    // INITIALIZE BUFFER FOR SENSOR READINGS
+    uint16_t sensor_buffer[MASK_NUM];
+
+    // BUTTON PRESS: START CAPTURE SEQUENCE
+    // GREEN LED ON TO INDICATE CAPTURE STARTED
+
+    for (int i = 0; i < MASK_NUM; i++)
+    {
+        // STEP 1: DISPLAY MASK
+
+        // STEP 2: CAPTURE SENSORE READING
+
+        // STEP 3: PUSH READING TO BUFFER
+
+        // STEP 4: WAIT FOR SOME TIME (e.g., 500 MILLISECONDS)
+        // TODO: TEST WITH DIFFERENT DELAYS
+        sleep_ms(500);
+    }
+
+    // WRITE BUFFER TO SD CARD
+    
 
     
 }
