@@ -1,11 +1,12 @@
 #include <stdio.h>
+#include <string.h>
 #include "pico/stdlib.h"
 // #include "pico/gpio.h"
 #include "photodiode.h"
 #include "lcd_controller.h"
 #include "sd_storage.h"
 
-#define MASK_NUM 1000
+#define MASK_NUM 10
 #define TTP223_PIN 2  // GPIO pin connected to TTP223 output
 
 /**
@@ -64,7 +65,7 @@ int main()
     // Test writing to SD card
     const char *test_filename = "Ghassan.txt";
     const char *test_data = "Hello, SD card hello my boy اهلا وسهلا!";
-    if (sd_write_file(test_filename, (const uint8_t *)test_data)) {
+    if (sd_write_file(test_filename, (const uint8_t *)test_data, strlen(test_data))) {
         printf("Successfully wrote to SD card: %s\n", test_filename);
     } else {
         printf("Failed to write to SD card\n");
@@ -116,19 +117,20 @@ int main()
         // STEP 1: DISPLAY MASK NUMBER ON LCD
 
         // STEP 2: CAPTURE SENSORE READING
-        sensor_buffer[i] = sensor_read_sample();  //// Raw 12-bit value (0-4095)
+        sensor_buffer[i] = sensor_read_sample();  // Raw 12-bit value (0-4095)
         printf("Captured sample %d: %u\n", i, sensor_buffer[i]);
 
 
         // STEP 3: WAIT FOR SOME TIME (e.g., 500 MILLISECONDS)
 
-        sleep_ms(500);
+        sleep_ms(50);
     }
 
     // WRITE BUFFER TO SD CARD
     const char *filename = "sensor_data.txt";
-    if (sd_write_file(filename, (const uint8_t *)sensor_buffer)) {
-        printf("Successfully wrote sensor data to SD card: %s\n", filename);
+    size_t data_size = MASK_NUM * sizeof(uint16_t);  // Total bytes to write
+    if (sd_write_file(filename, (const uint8_t *)sensor_buffer, data_size)) {
+        printf("Successfully wrote sensor data to SD card: %s (%zu bytes)\n", filename, data_size);
     } else {
         printf("Failed to write sensor data to SD card\n");
     }

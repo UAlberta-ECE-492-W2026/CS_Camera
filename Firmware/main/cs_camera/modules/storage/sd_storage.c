@@ -34,7 +34,7 @@ bool sd_storage_init(void) {
     
 }
 
-bool sd_write_file(const char *filename, const uint8_t *data) {
+bool sd_write_file(const char *filename, const uint8_t *data, size_t length) {
     if (!initialized) {
         printf("SD storage not initialized\n");
         return false;
@@ -48,8 +48,8 @@ bool sd_write_file(const char *filename, const uint8_t *data) {
     }
 
     UINT bytes_written;
-    res = f_write(&file, data, strlen((const char *)data), &bytes_written);
-    if (res != FR_OK || bytes_written != strlen((const char *)data)) {
+    res = f_write(&file, data, length, &bytes_written);
+    if (res != FR_OK || bytes_written != length) {
         printf("Failed to write to file: %d\n", res);
         f_close(&file);
         return false;
