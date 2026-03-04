@@ -13,4 +13,14 @@
 %==========================================================================
 % REVISION HISTORY:
 % 0.0 - Create File
-%==========================================================================
+%==========================================================================\
+
+% Initialize camera parameters
+cfg = load_config('camera_settings.json');
+
+% Load Scene
+img = imread('cameraman.tif');
+img = imresize(img, cfg.sampling_parameters.resolution);
+img = double(img);
+
+% Generate Walsh-Hadamard Codebook
