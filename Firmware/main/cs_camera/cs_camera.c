@@ -113,19 +113,27 @@ int main()
 
     for (int i = 0; i < MASK_NUM; i++)
     {
-        // STEP 1: DISPLAY MASK
-        printf("inside the loop %d\n", i);
+        // STEP 1: DISPLAY MASK NUMBER ON LCD
+
         // STEP 2: CAPTURE SENSORE READING
+        sensor_buffer[i] = sensor_read_sample();  //// Raw 12-bit value (0-4095)
+        printf("Captured sample %d: %u\n", i, sensor_buffer[i]);
 
-        // STEP 3: PUSH READING TO BUFFER
 
-        // STEP 4: WAIT FOR SOME TIME (e.g., 500 MILLISECONDS)
-        // TODO: TEST WITH DIFFERENT DELAYS
+        // STEP 3: WAIT FOR SOME TIME (e.g., 500 MILLISECONDS)
+
         sleep_ms(500);
     }
 
     // WRITE BUFFER TO SD CARD
+    const char *filename = "sensor_data.txt";
+    if (sd_write_file(filename, (const uint8_t *)sensor_buffer)) {
+        printf("Successfully wrote sensor data to SD card: %s\n", filename);
+    } else {
+        printf("Failed to write sensor data to SD card\n");
+    }
     
-
+    // DEINITIALIZE SD STORAGE
+    sd_storage_deinit();
     
 }
