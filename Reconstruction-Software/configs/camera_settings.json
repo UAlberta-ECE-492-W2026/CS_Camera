@@ -1,0 +1,24 @@
+{
+    "hardware": {
+        "adc_bits": 12,
+        "v_ref": 3.3,
+        "quantization_levels": 4096,
+        "saturation_limit": 3800
+    },
+    "sampling_parameters": {
+        "resolution": [64, 64],
+        "samples_per_mask": 256,
+        "low_freq_bias_pct": 0.25
+    },
+    "bias_profile": {
+        "low_freq_bias_pct": 0.15
+    },
+    "sensor_noise": {
+        "std_dev_counts": 2.5,
+        "dark_current_counts": 12.0
+    },
+    "mask_constraints": {
+        "black_leakage_pct": 0.08,
+        "white_attenuation_pct": 0.90
+    }
+}
