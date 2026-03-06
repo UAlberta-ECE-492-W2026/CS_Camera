@@ -12,7 +12,7 @@
 % 0.0 - Create File
 % 1.0 - Implemented fileread and jsondecode logic
 %==========================================================================
-function [config] = load_config(filename)
+function [config] = loadConfig(filename)
     
     arguments (Input)
         filename {mustBeText}

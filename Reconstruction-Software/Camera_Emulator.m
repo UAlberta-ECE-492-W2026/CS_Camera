@@ -18,23 +18,13 @@
 clear;
 
 % Initialize camera parameters
-cfg = load_config('camera_settings.json');
+cfg = loadConfig('camera_settings.json');
 
-% Load Scene
-img = imread('cameraman.tif');
-img = imresize(img, cfg.sampling_parameters.resolution);
-img = double(img);
+% Load, resize, and normalize to a 0.0 - 1.0 scale
+img = imresize(im2double(imread('cameraman.tif')), cfg.sampling_parameters.resolution);
 
-% Quick Check Script
-indices_to_test = [0, 1, 63, 3*512];
-titles = {'Index 0 (DC)', 'Index 1', 'Index 63', 'Index 1536'};
+% Sampling Strategy (Mask Selection)
 
-figure('Name', 'Walsh-Hadamard Verification');
-for i = 1:4
-    subplot(2, 2, i);
-    mask = generate_walsh_mask(indices_to_test(i), cfg.sampling_parameters.resolution);
-    imagesc(mask); 
-    colormap gray; 
-    axis image;
-    title(titles{i});
-end
+maskList = selectMaskIndexes(getOptimalCore(cfg.sampling_parameters.resolution, ...
+    cfg.sampling_parameters.core_mask_count), cfg.sampling_parameters.sampling_pct, ...
+    cfg.sampling_parameters.resolution);
