@@ -19,7 +19,7 @@
         "dark_current_counts": 12.0
     },
     "mask_constraints": {
-        "black_leakage_pct": 0.08,
-        "white_attenuation_pct": 0.90
+        "black_leakage_pct": 0.01,
+        "white_attenuation_pct": 1.0
     }
 }
