@@ -23,8 +23,8 @@ clear;
 cfg = loadConfig('camera_settings.json');
 
 % Load, resize, and normalize to a 0.0 - 1.0 scale
-img = imresize(im2double(imread('cameraman.tif')), cfg.sampling_parameters.resolution);
-
+img = imresize(im2double(imread('circuit.tif')), cfg.sampling_parameters.resolution);
+imshow('circuit.tif');
 % Sampling Strategy (Mask Selection)
 maskList = selectMaskIndexes(getOptimalCore(cfg.sampling_parameters.resolution, ...
     cfg.sampling_parameters.core_mask_count), cfg.sampling_parameters.sampling_pct, ...
@@ -32,25 +32,6 @@ maskList = selectMaskIndexes(getOptimalCore(cfg.sampling_parameters.resolution, 
 
 % Simulation of capture
 
-flatIMG = img(:);
+camera_data = simulateCapture(img, maskList, cfg);
 
-dataMatrix = zeros(length(maskList), 2);
-
-for i = 1:length(maskList)
-   
-    index = maskList(i);
-    
-    mask = double(generate_walsh_mask(index, cfg.sampling_parameters.resolution));
-    mask(mask == 1) = cfg.mask_constraints.white_attenuation_pct;
-    mask(mask == -1 | mask == 0) = cfg.mask_constraints.black_leakage_pct;
-    mask = mask(:);
-
-    idealSignal = dot(flatIMG, mask);
-
-    noiseSamples = idealSignal + (cfg.sensor_noise.std_dev_counts ... 
-        * randn(cfg.sampling_parameters.samples_per_mask, 1));
-
-    avgSignal = mean(noiseSamples);
-
-    dataMatrix(i, :) = [index, round(avgSignal)];
-end
+final_image = simpleReconstruction(camera_data, cfg.sampling_parameters.resolution);
