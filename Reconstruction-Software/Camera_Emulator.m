@@ -15,7 +15,7 @@
 %==========================================================================
 % REVISION HISTORY:
 % 0.0 - Create File
-%==========================================================================\
+%==========================================================================
 
 clear;
 
@@ -23,8 +23,8 @@ clear;
 cfg = loadConfig('camera_settings.json');
 
 % Load, resize, and normalize to a 0.0 - 1.0 scale
-img = imresize(im2double(imread('circuit.tif')), cfg.sampling_parameters.resolution);
-imshow('circuit.tif');
+img = imresize(im2double(im2gray(imread('penguin.tiff'))), cfg.sampling_parameters.resolution);
+imshow('penguin.tiff');
 % Sampling Strategy (Mask Selection)
 maskList = selectMaskIndexes(getOptimalCore(cfg.sampling_parameters.resolution, ...
     cfg.sampling_parameters.core_mask_count), cfg.sampling_parameters.sampling_pct, ...
@@ -35,3 +35,8 @@ maskList = selectMaskIndexes(getOptimalCore(cfg.sampling_parameters.resolution, 
 camera_data = simulateCapture(img, maskList, cfg);
 
 final_image = simpleReconstruction(camera_data, cfg.sampling_parameters.resolution);
+
+
+outputFileName = 'camera_data_export.csv';
+writematrix(camera_data, outputFileName);
+disp(['Camera data successfully exported to: ', outputFileName]);
