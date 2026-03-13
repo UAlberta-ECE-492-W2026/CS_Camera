@@ -1,13 +1,30 @@
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
+#include "pico/rand.h"
 // #include "pico/gpio.h"
 #include "photodiode.h"
 #include "lcd_controller.h"
 #include "sd_storage.h"
+#include "WalshMaskGenerator.h"
 
-#define MASK_NUM 10
+#define MASK_NUM 1000
 #define TTP223_PIN 2  // GPIO pin connected to TTP223 output
+#define NUM_READINGS 5 // READING PER MASK (e.g., 10 readings per mask)
+#define DELAY_MS 200
+#define HEADERSIZE 2  // For example, if we want to store a header in the file (e.g., timestamp, mask info, etc.)
+
+#define MASK_WIDTH     64
+#define MASK_HEIGHT    64
+
+#define LCD_WIDTH      240
+#define LCD_HEIGHT     240
+
+#define COLOR_BLACK    0x0000
+#define COLOR_WHITE    0xFFFF
+
+// TODO: ADD GREEN AND RED LED INDICATOR
+// TODO: 
 
 /**
  * Initialize the TTP223 capacitive touch sensor
@@ -41,47 +58,6 @@ void ttp223_wait_for_press(void) {
 
 int main()
 {
-    /* TEST CODE ---------------------------------------------------------------
-    stdio_init_all();
-    sleep_ms(2000); // Wait for USB serial to initialize
-    printf("going to initialize sensor\n");
-    sensor_init();
-    printf("sensor initialized\n");
-
-    // TESTING DISPLAY FOR 10 SECONDS
-    display_init();
-    for (int i = 0; i < 10; i++) {
-        display_fill(0x0000);
-        sleep_ms(500);
-        display_fill(0xffff);
-        sleep_ms(500);
-    }
-    
-    if(!sd_storage_init()) {
-        printf("Failed to initialize SD storage\n");
-        return 1;
-    }
-
-    // Test writing to SD card
-    const char *test_filename = "Ghassan.txt";
-    const char *test_data = "Hello, SD card hello my boy اهلا وسهلا!";
-    if (sd_write_file(test_filename, (const uint8_t *)test_data, strlen(test_data))) {
-        printf("Successfully wrote to SD card: %s\n", test_filename);
-    } else {
-        printf("Failed to write to SD card\n");
-    }
-
-    sd_storage_deinit();    
-    
-    while (true) {
-        printf("Hello, world 2!\n");
-        
-        sleep_ms(1000);
-    }
-     END OF TEST CODE --------------------------------------------------------*/
-
-
-
     // INITIALIZATION
     stdio_init_all();
 
@@ -103,8 +79,11 @@ int main()
         return 1;
     }
 
-    // INITIALIZE BUFFER FOR SENSOR READINGS
-    uint16_t sensor_buffer[MASK_NUM];
+    // INITIALIZE BUFFERS FOR SENSOR READINGS AND MASKS
+    uint16_t sensor_buffer[MASK_NUM + HEADERSIZE];  // INCLUDING THE CALIBRATION READING AS THE FIRST 2 ENTRIES
+    uint32_t average_reading;
+    uint8_t mask_buffer[MASK_HEIGHT * MASK_WIDTH];
+    uint16_t mask_index;
 
     // WAIT FOR TTP223 BUTTON PRESS TO START CAPTURE SEQUENCE
     ttp223_wait_for_press();
@@ -112,18 +91,46 @@ int main()
     // BUTTON PRESS: START CAPTURE SEQUENCE
     // GREEN LED ON TO INDICATE CAPTURE STARTED
 
+    // CALIBRATION SEQUENCE (DISPLAY CALIBRATION MASKS AND CAPTURE SENSOR READINGS)
+    display_fill(COLOR_BLACK);
+    average_reading = 0;
+    for (int i = 0; i < NUM_READINGS; i++) {
+        average_reading += sensor_read_sample();
+        sleep_ms(10);
+    }
+    average_reading /= NUM_READINGS;
+    sensor_buffer[0] = (uint16_t)average_reading;
+
+    display_fill(COLOR_WHITE);
+    average_reading = 0;
+    for (int i = 0; i < NUM_READINGS; i++) {
+        average_reading += sensor_read_sample();
+        sleep_ms(10);
+    }
+    average_reading /= NUM_READINGS;
+    sensor_buffer[1] = (uint16_t)average_reading;
+
+
     for (int i = 0; i < MASK_NUM; i++)
     {
         // STEP 1: DISPLAY MASK NUMBER ON LCD
+        mask_index = get_rand_32() % (MASK_WIDTH * MASK_HEIGHT);
+        generate_walsh_mask(mask_index, MASK_WIDTH, MASK_HEIGHT, mask_buffer);
+        display_show_mask(mask_buffer, MASK_WIDTH, MASK_HEIGHT);
 
-        // STEP 2: CAPTURE SENSORE READING
-        sensor_buffer[i] = sensor_read_sample();  // Raw 12-bit value (0-4095)
-        printf("Captured sample %d: %u\n", i, sensor_buffer[i]);
+
+        // STEP 2: WAIT FOR SOME TIME FOR THE MASK TO BE DISPLAYED
+        sleep_ms(DELAY_MS/2);
 
 
-        // STEP 3: WAIT FOR SOME TIME (e.g., 500 MILLISECONDS)
-
-        sleep_ms(50);
+        // STEP 3: CAPTURE SENSOR READINGS
+        average_reading = 0;
+        for (int i = 0; i < NUM_READINGS; i++) {
+            average_reading += sensor_read_sample();
+            sleep_ms(10);
+        }
+        average_reading /= NUM_READINGS;
+        sensor_buffer[i + HEADERSIZE] = (uint16_t)average_reading;
     }
 
     // WRITE BUFFER TO SD CARD
@@ -137,5 +144,4 @@ int main()
     
     // DEINITIALIZE SD STORAGE
     sd_storage_deinit();
-    
 }
