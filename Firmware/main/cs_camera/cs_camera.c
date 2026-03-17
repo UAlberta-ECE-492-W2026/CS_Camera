@@ -122,10 +122,26 @@ int main()
     sensor_buffer[1] = (uint16_t)average_reading;
     mask_indices[1] = -1;
 
+    // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
+    static uint16_t all_indices[MASK_WIDTH * MASK_HEIGHT];
+    for (uint16_t i = 0; i < MASK_WIDTH * MASK_HEIGHT; i++) {
+        all_indices[i] = i;
+    }
+
+    for (uint16_t i = MASK_WIDTH * MASK_HEIGHT - 1; i > 0; i--) {
+        uint16_t j = get_rand_32() % (i + 1);
+
+        // swap the two elements
+        uint16_t temp = all_indices[i];
+        all_indices[i] = all_indices[j];
+        all_indices[j] = temp;
+    }
+    // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
+
     for (int i = 0; i < MASK_NUM; i++)
     {
         // STEP 1: DISPLAY MASK NUMBER ON LCD
-        mask_index = get_rand_32() % (MASK_WIDTH * MASK_HEIGHT);
+        mask_index = all_indices[i];
         generate_walsh_mask(mask_index, MASK_WIDTH, MASK_HEIGHT, mask_buffer);
         display_show_mask(mask_buffer, MASK_WIDTH, MASK_HEIGHT);
         
