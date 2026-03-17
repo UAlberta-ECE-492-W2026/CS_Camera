@@ -7,8 +7,8 @@ static const struct st7789_config lcd_config = {
     .gpio_din = PICO_DEFAULT_SPI_TX_PIN, // GP19
     .gpio_clk = PICO_DEFAULT_SPI_SCK_PIN, // GP18
     .gpio_cs  = -1,
-    .gpio_dc  = 20,
-    .gpio_rst = 21,
+    .gpio_dc  = 21,
+    .gpio_rst = 20,
     .gpio_bl  = 22,
 };
 
