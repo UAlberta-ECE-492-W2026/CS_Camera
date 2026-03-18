@@ -9,9 +9,9 @@
 #include "WalshMaskGenerator.h"
 
 #define MASK_NUM        1024
-#define TTP223_PIN      2  // GPIO pin connected to TTP223 output
+#define BUTTON_PIN      2  // GPIO pin connected to Button output
 #define NUM_READINGS    500 // READING PER MASK (e.g., 10 readings per mask)
-#define DELAY_MS        200
+#define DELAY_MS        100
 #define HEADERSIZE      2  // For example, if we want to store a header in the file (e.g., timestamp, mask info, etc.)
 
 #define MASK_WIDTH      64
@@ -25,33 +25,54 @@
 
 #define LINE_LENGTH     12 // max csv line length ("32767,32767\n")
 
-// TODO: ADD GREEN AND RED LED INDICATOR
-// TODO: 
+#define GREEN_LED_PIN   0
+#define RED_LED_PIN     1
+
+#define NUM_IMP_INDICES 256
+const uint16_t important_indices[NUM_IMP_INDICES] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 
+    21, 22, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 
+    81, 82, 83, 84, 85, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 
+    139, 140, 141, 142, 143, 144, 145, 146, 147, 148, 192, 193, 194, 195, 196, 
+    197, 198, 199, 200, 201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 256, 
+    257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 
+    272, 273, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 
+    333, 334, 335, 336, 384, 385, 386, 387, 388, 389, 390, 391, 392, 393, 394, 
+    395, 396, 397, 398, 399, 448, 449, 450, 451, 452, 453, 454, 455, 456, 457, 
+    458, 459, 460, 461, 462, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 
+    522, 523, 524, 525, 576, 577, 578, 579, 580, 581, 582, 583, 584, 585, 586, 
+    587, 588, 640, 641, 642, 643, 644, 645, 646, 647, 648, 649, 650, 651, 704, 
+    705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 768, 769, 770, 771, 772, 
+    773, 774, 775, 776, 777, 832, 833, 834, 835, 836, 837, 838, 839, 840, 896, 
+    897, 898, 899, 900, 901, 902, 903, 960, 961, 962, 963, 964, 965, 966, 1024, 
+    1025, 1026, 1027, 1028, 1029, 1088, 1089, 1090, 1091, 1092, 1152, 1153, 1154, 
+    1155, 1216, 1217, 1218, 1280, 1281, 1344
+};
 
 /**
  * Initialize the TTP223 capacitive touch sensor
  */
-void ttp223_init(void) {
-    gpio_init(TTP223_PIN);
-    gpio_set_dir(TTP223_PIN, GPIO_IN);  // Set as input
-    printf("TTP223 initialized on GPIO %d\n", TTP223_PIN);
+void button_init(void) {
+    gpio_init(BUTTON_PIN);
+    gpio_set_dir(BUTTON_PIN, GPIO_IN);  // Set as input
+    printf("TTP223 initialized on GPIO %d\n", BUTTON_PIN);
 }
 
 /**
  * Check if TTP223 is pressed (button output is HIGH)
  * @return true if button is pressed, 0 otherwise
  */
-bool ttp223_is_pressed(void) {
-    return gpio_get(TTP223_PIN);
+bool button_is_pressed(void) {
+    return gpio_get(BUTTON_PIN);
 }
 
 /**
  * Wait for TTP223 button press with optional timeout
  * This function blocks until the button is pressed
  */
-void ttp223_wait_for_press(void) {
+void button_wait_for_press(void) {
     printf("Waiting for TTP223 button press to start capture...\n");
-    while (!ttp223_is_pressed()) {
+    while (!button_is_pressed()) {
         sleep_ms(50);  // Check every 50ms
     }
     sleep_ms(100);  // Debounce delay
@@ -63,13 +84,25 @@ int main()
     // INITIALIZATION
     stdio_init_all();
 
-    for(uint8_t i = 0; i < 20; i++) {
-        printf("Waiting to initialize... %d/20\n", i+1);
+    gpio_init(GREEN_LED_PIN);
+    gpio_init(RED_LED_PIN);
+
+    gpio_set_dir(GREEN_LED_PIN, true);
+    gpio_set_dir(RED_LED_PIN, true);
+
+    gpio_put(GREEN_LED_PIN, false);
+    gpio_put(RED_LED_PIN, true);
+
+    for(uint8_t i = 0; i < 15; i++) {
+        printf("Waiting to initialize... %d/15\n", i+1);
+        gpio_put(RED_LED_PIN, i % 2 == 0);
         sleep_ms(1000);
     }
 
+    gpio_put(RED_LED_PIN, true);
+
     // Initialize TTP223 button
-    ttp223_init();
+    button_init();
 
     if (!display_init()) {
         printf("Failed to initialize display\n");
@@ -93,13 +126,18 @@ int main()
     uint8_t mask_buffer[MASK_HEIGHT * MASK_WIDTH];
     uint16_t mask_index;
 
-    printf("starting...\n");
+    gpio_put(RED_LED_PIN, false);
+    gpio_put(GREEN_LED_PIN, true);
 
     // WAIT FOR TTP223 BUTTON PRESS TO START CAPTURE SEQUENCE
-    // ttp223_wait_for_press();
-
+    button_wait_for_press();
+    
     // BUTTON PRESS: START CAPTURE SEQUENCE
     // GREEN LED ON TO INDICATE CAPTURE STARTED
+    printf("starting...\n");
+
+    gpio_put(GREEN_LED_PIN, true);
+    gpio_put(RED_LED_PIN, false);
 
     // CALIBRATION SEQUENCE (DISPLAY CALIBRATION MASKS AND CAPTURE SENSOR READINGS)
     display_fill(COLOR_BLACK);
@@ -123,19 +161,32 @@ int main()
     mask_indices[1] = -1;
 
     // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
+    printf("starting shuffle...");
     static uint16_t all_indices[MASK_WIDTH * MASK_HEIGHT];
     for (uint16_t i = 0; i < MASK_WIDTH * MASK_HEIGHT; i++) {
         all_indices[i] = i;
     }
 
-    for (uint16_t i = MASK_WIDTH * MASK_HEIGHT - 1; i > 0; i--) {
-        uint16_t j = get_rand_32() % (i + 1);
+    // ----- Guarantee inclusion of important indices -----
+    for(uint16_t i = 0; i < NUM_IMP_INDICES; i++) {
+        uint16_t start = all_indices[i];
+        uint16_t target = all_indices[important_indices[i]];
 
+        all_indices[i] = target;
+        all_indices[important_indices[i]] = start;
+    }
+    // ----- Guarantee inclusion of important indices -----
+    
+    for (uint16_t i = MASK_WIDTH * MASK_HEIGHT - 1; i > NUM_IMP_INDICES; i--) {
+        // j must not land in the protected zone [0, NUM_IMP_INDICES)
+        uint16_t j = NUM_IMP_INDICES + get_rand_32() % (i + 1 - NUM_IMP_INDICES);
+        
         // swap the two elements
         uint16_t temp = all_indices[i];
         all_indices[i] = all_indices[j];
         all_indices[j] = temp;
     }
+    printf(" Done!\n");
     // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
 
     for (int i = 0; i < MASK_NUM; i++)
@@ -146,7 +197,7 @@ int main()
         display_show_mask(mask_buffer, MASK_WIDTH, MASK_HEIGHT);
         
         // STEP 2: WAIT FOR SOME TIME FOR THE MASK TO BE DISPLAYED
-        sleep_ms(DELAY_MS/2);
+        sleep_ms(DELAY_MS);
         
         // STEP 3: CAPTURE SENSOR READINGS
         average_reading = 0;
@@ -157,6 +208,12 @@ int main()
         average_reading /= NUM_READINGS;
         sensor_buffer[i + HEADERSIZE] = (uint16_t)average_reading;
         mask_indices[i + HEADERSIZE] = mask_index;
+
+        printf("%d. measuring mask %d: %d\n", i, mask_index, average_reading);
+
+        if(i % 5 == 0) {
+            gpio_put(GREEN_LED_PIN, i % 10 == 0);
+        }
     }
 
     char csv_data[(MASK_NUM + HEADERSIZE) * (LINE_LENGTH)];
@@ -174,6 +231,9 @@ int main()
     } else {
         printf("Failed to write sensor data to SD card\n");
     }
+
+    gpio_put(GREEN_LED_PIN, true);
+    gpio_put(RED_LED_PIN, false);
 
     // DEINITIALIZE SD STORAGE
     sd_storage_deinit();
