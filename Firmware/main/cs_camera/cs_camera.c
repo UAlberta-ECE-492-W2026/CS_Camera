@@ -99,142 +99,145 @@ int main()
         sleep_ms(1000);
     }
 
-    gpio_put(RED_LED_PIN, true);
+    while(true) {
 
-    // Initialize TTP223 button
-    button_init();
+        gpio_put(RED_LED_PIN, true);
 
-    if (!display_init()) {
-        printf("Failed to initialize display\n");
-        return 1;
-    }
+        // Initialize TTP223 button
+        button_init();
 
-    if (!sensor_init()) {
-        printf("Failed to initialize sensor\n");
-        return 1;
-    }
+        if (!display_init()) {
+            printf("Failed to initialize display\n");
+            return 1;
+        }
 
-    if (!sd_storage_init()) {
-        printf("Failed to initialize SD storage\n");
-        return 1;
-    }
+        if (!sensor_init()) {
+            printf("Failed to initialize sensor\n");
+            return 1;
+        }
 
-    // INITIALIZE BUFFERS FOR SENSOR READINGS AND MASKS
-    uint16_t sensor_buffer[MASK_NUM + HEADERSIZE];  // INCLUDING THE CALIBRATION READING AS THE FIRST 2 ENTRIES
-    int16_t mask_indices[MASK_NUM + HEADERSIZE];
-    uint32_t average_reading;
-    uint8_t mask_buffer[MASK_HEIGHT * MASK_WIDTH];
-    uint16_t mask_index;
+        if (!sd_storage_init()) {
+            printf("Failed to initialize SD storage\n");
+            return 1;
+        }
 
-    gpio_put(RED_LED_PIN, false);
-    gpio_put(GREEN_LED_PIN, true);
+        // INITIALIZE BUFFERS FOR SENSOR READINGS AND MASKS
+        uint16_t sensor_buffer[MASK_NUM + HEADERSIZE];  // INCLUDING THE CALIBRATION READING AS THE FIRST 2 ENTRIES
+        int16_t mask_indices[MASK_NUM + HEADERSIZE];
+        uint32_t average_reading;
+        uint8_t mask_buffer[MASK_HEIGHT * MASK_WIDTH];
+        uint16_t mask_index;
 
-    // WAIT FOR TTP223 BUTTON PRESS TO START CAPTURE SEQUENCE
-    button_wait_for_press();
-    
-    // BUTTON PRESS: START CAPTURE SEQUENCE
-    // GREEN LED ON TO INDICATE CAPTURE STARTED
-    printf("starting...\n");
+        gpio_put(RED_LED_PIN, false);
+        gpio_put(GREEN_LED_PIN, true);
 
-    gpio_put(GREEN_LED_PIN, true);
-    gpio_put(RED_LED_PIN, false);
-
-    // CALIBRATION SEQUENCE (DISPLAY CALIBRATION MASKS AND CAPTURE SENSOR READINGS)
-    display_fill(COLOR_BLACK);
-    average_reading = 0;
-    for (int i = 0; i < NUM_READINGS; i++) {
-        average_reading += sensor_read_sample();
-        sleep_us(50);
-    }
-    average_reading /= NUM_READINGS;
-    sensor_buffer[0] = (uint16_t)average_reading;
-    mask_indices[0] = -1;
-
-    display_fill(COLOR_WHITE);
-    average_reading = 0;
-    for (int i = 0; i < NUM_READINGS; i++) {
-        average_reading += sensor_read_sample();
-        sleep_us(50);
-    }
-    average_reading /= NUM_READINGS;
-    sensor_buffer[1] = (uint16_t)average_reading;
-    mask_indices[1] = -1;
-
-    // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
-    printf("starting shuffle...");
-    static uint16_t all_indices[MASK_WIDTH * MASK_HEIGHT];
-    for (uint16_t i = 0; i < MASK_WIDTH * MASK_HEIGHT; i++) {
-        all_indices[i] = i;
-    }
-
-    // ----- Guarantee inclusion of important indices -----
-    for(uint16_t i = 0; i < NUM_IMP_INDICES; i++) {
-        uint16_t start = all_indices[i];
-        uint16_t target = all_indices[important_indices[i]];
-
-        all_indices[i] = target;
-        all_indices[important_indices[i]] = start;
-    }
-    // ----- Guarantee inclusion of important indices -----
-    
-    for (uint16_t i = MASK_WIDTH * MASK_HEIGHT - 1; i > NUM_IMP_INDICES; i--) {
-        // j must not land in the protected zone [0, NUM_IMP_INDICES)
-        uint16_t j = NUM_IMP_INDICES + get_rand_32() % (i + 1 - NUM_IMP_INDICES);
+        // WAIT FOR TTP223 BUTTON PRESS TO START CAPTURE SEQUENCE
+        button_wait_for_press();
         
-        // swap the two elements
-        uint16_t temp = all_indices[i];
-        all_indices[i] = all_indices[j];
-        all_indices[j] = temp;
-    }
-    printf(" Done!\n");
-    // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
+        // BUTTON PRESS: START CAPTURE SEQUENCE
+        // GREEN LED ON TO INDICATE CAPTURE STARTED
+        printf("starting...\n");
 
-    for (int i = 0; i < MASK_NUM; i++)
-    {
-        // STEP 1: DISPLAY MASK NUMBER ON LCD
-        mask_index = all_indices[i];
-        generate_walsh_mask(mask_index, MASK_WIDTH, MASK_HEIGHT, mask_buffer);
-        display_show_mask(mask_buffer, MASK_WIDTH, MASK_HEIGHT);
-        
-        // STEP 2: WAIT FOR SOME TIME FOR THE MASK TO BE DISPLAYED
-        sleep_ms(DELAY_MS);
-        
-        // STEP 3: CAPTURE SENSOR READINGS
+        gpio_put(GREEN_LED_PIN, true);
+        gpio_put(RED_LED_PIN, false);
+
+        // CALIBRATION SEQUENCE (DISPLAY CALIBRATION MASKS AND CAPTURE SENSOR READINGS)
+        display_fill(COLOR_BLACK);
         average_reading = 0;
         for (int i = 0; i < NUM_READINGS; i++) {
             average_reading += sensor_read_sample();
             sleep_us(50);
         }
         average_reading /= NUM_READINGS;
-        sensor_buffer[i + HEADERSIZE] = (uint16_t)average_reading;
-        mask_indices[i + HEADERSIZE] = mask_index;
+        sensor_buffer[0] = (uint16_t)average_reading;
+        mask_indices[0] = -1;
 
-        printf("%d. measuring mask %d: %d\n", i, mask_index, average_reading);
-
-        if(i % 5 == 0) {
-            gpio_put(GREEN_LED_PIN, i % 10 == 0);
+        display_fill(COLOR_WHITE);
+        average_reading = 0;
+        for (int i = 0; i < NUM_READINGS; i++) {
+            average_reading += sensor_read_sample();
+            sleep_us(50);
         }
+        average_reading /= NUM_READINGS;
+        sensor_buffer[1] = (uint16_t)average_reading;
+        mask_indices[1] = -1;
+
+        // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
+        printf("starting shuffle...");
+        static uint16_t all_indices[MASK_WIDTH * MASK_HEIGHT];
+        for (uint16_t i = 0; i < MASK_WIDTH * MASK_HEIGHT; i++) {
+            all_indices[i] = i;
+        }
+
+        // ----- Guarantee inclusion of important indices -----
+        for(uint16_t i = 0; i < NUM_IMP_INDICES; i++) {
+            uint16_t start = all_indices[i];
+            uint16_t target = all_indices[important_indices[i]];
+
+            all_indices[i] = target;
+            all_indices[important_indices[i]] = start;
+        }
+        // ----- Guarantee inclusion of important indices -----
+        
+        for (uint16_t i = MASK_WIDTH * MASK_HEIGHT - 1; i > NUM_IMP_INDICES; i--) {
+            // j must not land in the protected zone [0, NUM_IMP_INDICES)
+            uint16_t j = NUM_IMP_INDICES + get_rand_32() % (i + 1 - NUM_IMP_INDICES);
+            
+            // swap the two elements
+            uint16_t temp = all_indices[i];
+            all_indices[i] = all_indices[j];
+            all_indices[j] = temp;
+        }
+        printf(" Done!\n");
+        // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
+
+        for (int i = 0; i < MASK_NUM; i++)
+        {
+            // STEP 1: DISPLAY MASK NUMBER ON LCD
+            mask_index = all_indices[i];
+            generate_walsh_mask(mask_index, MASK_WIDTH, MASK_HEIGHT, mask_buffer);
+            display_show_mask(mask_buffer, MASK_WIDTH, MASK_HEIGHT);
+            
+            // STEP 2: WAIT FOR SOME TIME FOR THE MASK TO BE DISPLAYED
+            sleep_ms(DELAY_MS);
+            
+            // STEP 3: CAPTURE SENSOR READINGS
+            average_reading = 0;
+            for (int i = 0; i < NUM_READINGS; i++) {
+                average_reading += sensor_read_sample();
+                sleep_us(50);
+            }
+            average_reading /= NUM_READINGS;
+            sensor_buffer[i + HEADERSIZE] = (uint16_t)average_reading;
+            mask_indices[i + HEADERSIZE] = mask_index;
+
+            printf("%d. measuring mask %d: %d\n", i, mask_index, average_reading);
+
+            if(i % 5 == 0) {
+                gpio_put(GREEN_LED_PIN, i % 10 == 0);
+            }
+        }
+
+        char csv_data[(MASK_NUM + HEADERSIZE) * (LINE_LENGTH)];
+        size_t data_size = 0;
+
+        for (uint16_t i = 0; i < MASK_NUM + HEADERSIZE; i++) {
+            data_size += snprintf(csv_data + data_size, sizeof(csv_data) - data_size, 
+                                    "%d,%d\n", mask_indices[i], sensor_buffer[i]);
+        }
+
+        // WRITE BUFFER TO SD CARD
+        const char *filename = "sensor_data.csv";
+        if (sd_write_file(filename, csv_data, data_size)) {
+            printf("Successfully wrote sensor data to SD card: %s (%zu bytes)\n", filename, data_size);
+        } else {
+            printf("Failed to write sensor data to SD card\n");
+        }
+
+        gpio_put(GREEN_LED_PIN, true);
+        gpio_put(RED_LED_PIN, false);
+
+        // DEINITIALIZE SD STORAGE
+        sd_storage_deinit();
     }
-
-    char csv_data[(MASK_NUM + HEADERSIZE) * (LINE_LENGTH)];
-    size_t data_size = 0;
-
-    for (uint16_t i = 0; i < MASK_NUM + HEADERSIZE; i++) {
-        data_size += snprintf(csv_data + data_size, sizeof(csv_data) - data_size, 
-                                "%d,%d\n", mask_indices[i], sensor_buffer[i]);
-    }
-
-    // WRITE BUFFER TO SD CARD
-    const char *filename = "sensor_data.csv";
-    if (sd_write_file(filename, csv_data, data_size)) {
-        printf("Successfully wrote sensor data to SD card: %s (%zu bytes)\n", filename, data_size);
-    } else {
-        printf("Failed to write sensor data to SD card\n");
-    }
-
-    gpio_put(GREEN_LED_PIN, true);
-    gpio_put(RED_LED_PIN, false);
-
-    // DEINITIALIZE SD STORAGE
-    sd_storage_deinit();
 }
