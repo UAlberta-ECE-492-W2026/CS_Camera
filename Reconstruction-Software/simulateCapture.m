@@ -8,14 +8,13 @@ function dataMatrix = simulateCapture(img, maskList, cfg)
 %              mask_constraints, hardware limits, and sensor_noise.
 %
 % Outputs:
-%   dataMatrix - An N x 2 matrix where the first column is the mask index 
-%                and the second column is the rounded, averaged noisy signal.
+%   dataMatrix - An (N+1) x 2 matrix. Row 1 contains the resolution metadata 
+%                (index -1), and the rest contain [mask_index, adc_value].
 
     % Flatten the image into a 1D column vector and ensure double precision
     flatIMG = double(img(:));
     
     % --- Extract Hardware & Gain Parameters ---
-    % If sensor_gain isn't in your JSON yet, default to the 5x multiplier
     if isfield(cfg.hardware, 'sensor_gain')
         sensorGain = cfg.hardware.sensor_gain;
     else
@@ -29,9 +28,14 @@ function dataMatrix = simulateCapture(img, maskList, cfg)
     % Noise scales roughly with the square root of the gain increase
     effectiveStdDev = baseStdDev * sqrt(sensorGain);
     
-    % Initialize the output matrix
     numMasks = length(maskList);
-    dataMatrix = zeros(numMasks, 2);
+    
+    % Initialize the output matrix with an extra row for the resolution header
+    dataMatrix = zeros(numMasks + 1, 2);
+    
+    % Store the resolution in the first row. 
+    % Taking the first element since the image is always square.
+    dataMatrix(1, :) = [-1, cfg.sampling_parameters.resolution(1)];
     
     for i = 1:numMasks
         index = maskList(i);
@@ -58,10 +62,9 @@ function dataMatrix = simulateCapture(img, maskList, cfg)
         avgSignal = mean(noiseSamples);
         
         % --- APPLY ADC HARDWARE LIMITS (CLIPPING) ---
-        % Ensures the amplified signal doesn't exceed the Pi's ADC max (e.g., 3800)
         finalSignal = min(max(avgSignal, 0), satLimit);
         
-        % Store the result
-        dataMatrix(i, :) = [index, round(finalSignal)];
+        % Store the result (shifted by 1 to protect the resolution header)
+        dataMatrix(i + 1, :) = [index, round(finalSignal)];
     end
 end

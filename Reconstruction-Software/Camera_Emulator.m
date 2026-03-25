@@ -34,7 +34,8 @@ maskList = selectMaskIndexes(getOptimalCore(cfg.sampling_parameters.resolution, 
 
 camera_data = simulateCapture(img, maskList, cfg);
 
-final_image = simpleReconstruction(camera_data, cfg.sampling_parameters.resolution);
+final_image = simpleReconstruction(camera_data);
+tv_image = tvReconstruction(camera_data);
 
 
 outputFileName = 'camera_data_export.csv';

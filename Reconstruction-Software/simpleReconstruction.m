@@ -1,46 +1,55 @@
-function reconstructedImg = simpleReconstruction(dataMatrix, res)
+function reconstructedImg = simpleReconstruction(dataMatrix)
 % SIMPLERECONSTRUCTION Builds an image by summing weighted Walsh masks.
 %
 % Inputs:
-%   dataMatrix - N x 2 matrix [mask_index, adc_value]
-%   res        - Resolution array, e.g., [64, 64]
+%   dataMatrix - N x 2 matrix [mask_index, adc_value]. Must contain a 
+%                header row with index -1 defining the square resolution.
 %
 % Outputs:
 %   reconstructedImg - The normalized 2D image matrix
 
-    W = res(1); 
-    H = res(2);
+    % 1. Extract resolution from the header row (index == -1)
+    resRowIdx = find(dataMatrix(:, 1) == -1);
     
-    % 1. Extract indices and raw ADC values
+    if isempty(resRowIdx)
+        error('Resolution metadata not found. Missing -1 index in dataMatrix.');
+    end
+    
+    % Since it is a square, W and H are the same value
+    resValue = dataMatrix(resRowIdx, 2);
+    W = resValue; 
+    H = resValue;
+    res = [W, H]; % Rebuild the array for generate_walsh_mask
+    
+    % Remove the resolution metadata row from the matrix before processing
+    dataMatrix(resRowIdx, :) = [];
+    
+    % 2. Extract indices and raw ADC values from the remaining data
     indices = dataMatrix(:, 1);
     raw_adc_values = dataMatrix(:, 2);
     
-    % 2. Remove the DC Baseline (Crucial for physical simulation)
-    % This isolates the tiny high-frequency structural variations (+/- 20 counts)
-    % from the massive ambient light baseline (~2000 counts).
+    % 3. Remove the DC Baseline 
     mean_val = mean(raw_adc_values);
     ac_values = raw_adc_values - mean_val;
     
-    % 3. Initialize a blank canvas
+    % 4. Initialize a blank canvas
     reconstructedImg = zeros(H, W);
     
     fprintf('Reconstructing %dx%d image using %d masks...\n', W, H, length(indices));
     
-    % 4. Back-Projection Loop
+    % 5. Back-Projection Loop
     for i = 1:length(indices)
         idx = indices(i);
         weight = ac_values(i);
         
         % Generate the IDEAL mathematical mask for reconstruction
-        % Note: We use the perfect +1/-1 math basis here, NOT the physical 
-        % 0.9/0.08 constraints we used for the optical capture simulation.
         mask = double(generate_walsh_mask(idx, res));
         
         % Multiply the mask by its AC weight and add it to the total image
         reconstructedImg = reconstructedImg + (weight * mask);
     end
     
-    % 5. Normalize the final image for display (scale from 0 to 1)
+    % 6. Normalize the final image for display (scale from 0 to 1)
     reconstructedImg = reconstructedImg - min(reconstructedImg(:));
     reconstructedImg = reconstructedImg / max(reconstructedImg(:));
     
