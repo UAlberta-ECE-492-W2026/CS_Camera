@@ -16,7 +16,7 @@ dataMatrix(dataMatrix(:, 1) == -1, :) = [];
 
 % 4. Call the Reconstruction Function
 % Ensure simpleReconstruction.m is in your current folder or path
-reconstructedImg = simpleReconstruction(dataMatrix, res);
+reconstructedImg = reco.simpleReconstruction(dataMatrix, res);
 
 % 5. (Optional) Visualize the result
 figure;

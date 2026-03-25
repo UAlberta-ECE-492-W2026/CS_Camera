@@ -20,22 +20,22 @@
 clear;
 
 % Initialize camera parameters
-cfg = loadConfig('camera_settings.json');
+cfg = utils.loadConfig('camera_settings.json');
 
 % Load, resize, and normalize to a 0.0 - 1.0 scale
 img = imresize(im2double(im2gray(imread('penguin.tiff'))), cfg.sampling_parameters.resolution);
 imshow('penguin.tiff');
 % Sampling Strategy (Mask Selection)
-maskList = selectMaskIndexes(getOptimalCore(cfg.sampling_parameters.resolution, ...
+maskList = utils.selectMaskIndexes(tools.getOptimalCore(cfg.sampling_parameters.resolution, ...
     cfg.sampling_parameters.core_mask_count), cfg.sampling_parameters.sampling_pct, ...
     cfg.sampling_parameters.resolution);
 
 % Simulation of capture
 
-camera_data = simulateCapture(img, maskList, cfg);
+camera_data = utils.simulateCapture(img, maskList, cfg);
 
-final_image = simpleReconstruction(camera_data);
-tv_image = tvReconstruction(camera_data);
+final_image = reco.simpleReconstruction(camera_data);
+tv_image = reco.tvReconstruction(camera_data);
 
 
 outputFileName = 'camera_data_export.csv';

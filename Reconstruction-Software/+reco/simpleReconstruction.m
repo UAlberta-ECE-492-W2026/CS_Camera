@@ -43,7 +43,7 @@ function reconstructedImg = simpleReconstruction(dataMatrix)
         weight = ac_values(i);
         
         % Generate the IDEAL mathematical mask for reconstruction
-        mask = double(generate_walsh_mask(idx, res));
+        mask = double(utils.generate_walsh_mask(idx, res));
         
         % Multiply the mask by its AC weight and add it to the total image
         reconstructedImg = reconstructedImg + (weight * mask);
@@ -53,9 +53,9 @@ function reconstructedImg = simpleReconstruction(dataMatrix)
     reconstructedImg = reconstructedImg - min(reconstructedImg(:));
     reconstructedImg = reconstructedImg / max(reconstructedImg(:));
     
-    % --- Display the Result ---
-    figure('Name', 'Simple Linear Reconstruction', 'Position', [300, 300, 500, 500]);
-    imshow(reconstructedImg);
-    title(sprintf('Reconstructed (Sampled %d / %d)', length(indices), W*H));
-    colormap gray;
+    % % --- Display the Result ---
+    % figure('Name', 'Simple Linear Reconstruction', 'Position', [300, 300, 500, 500]);
+    % imshow(reconstructedImg);
+    % title(sprintf('Reconstructed (Sampled %d / %d)', length(indices), W*H));
+    % colormap gray;
 end

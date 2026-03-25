@@ -41,7 +41,7 @@ function dataMatrix = simulateCapture(img, maskList, cfg)
         index = maskList(i);
         
         % Generate and apply constraints to the mask
-        mask = double(generate_walsh_mask(index, cfg.sampling_parameters.resolution));
+        mask = double(utils.generate_walsh_mask(index, cfg.sampling_parameters.resolution));
         
         physMask = mask;
         physMask(mask == 1) = cfg.mask_constraints.white_attenuation_pct;
