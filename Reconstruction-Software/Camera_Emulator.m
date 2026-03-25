@@ -1,7 +1,9 @@
 %==========================================================================
 % SCRIPT_NAME: Camera_Emulator.m
+%
 % PURPOSE:     Simulates capturing an image with the compressive sensing 
 %              camera.
+%
 % AUTHOR:      Cole Mckay (cdmckay1@ualberta.ca)
 % DATE:        March 1, 2026
 % VERSION:     0.0
@@ -13,28 +15,29 @@
 %==========================================================================
 % REVISION HISTORY:
 % 0.0 - Create File
-%==========================================================================\
+%==========================================================================
 
 clear;
 
 % Initialize camera parameters
-cfg = load_config('camera_settings.json');
+cfg = utils.loadConfig('camera_settings.json');
 
-% Load Scene
-img = imread('cameraman.tif');
-img = imresize(img, cfg.sampling_parameters.resolution);
-img = double(img);
+% Load, resize, and normalize to a 0.0 - 1.0 scale
+img = imresize(im2double(im2gray(imread('penguin.tiff'))), cfg.sampling_parameters.resolution);
+imshow('penguin.tiff');
+% Sampling Strategy (Mask Selection)
+maskList = utils.selectMaskIndexes(tools.getOptimalCore(cfg.sampling_parameters.resolution, ...
+    cfg.sampling_parameters.core_mask_count), cfg.sampling_parameters.sampling_pct, ...
+    cfg.sampling_parameters.resolution);
 
-% Quick Check Script
-indices_to_test = [0, 1, 63, 3*512];
-titles = {'Index 0 (DC)', 'Index 1', 'Index 63', 'Index 1536'};
+% Simulation of capture
 
-figure('Name', 'Walsh-Hadamard Verification');
-for i = 1:4
-    subplot(2, 2, i);
-    mask = generate_walsh_mask(indices_to_test(i), cfg.sampling_parameters.resolution);
-    imagesc(mask); 
-    colormap gray; 
-    axis image;
-    title(titles{i});
-end
+camera_data = utils.simulateCapture(img, maskList, cfg);
+
+final_image = reco.simpleReconstruction(camera_data);
+tv_image = reco.tvReconstruction(camera_data);
+
+
+outputFileName = 'camera_data_export.csv';
+writematrix(camera_data, outputFileName);
+disp(['Camera data successfully exported to: ', outputFileName]);

@@ -8,7 +8,8 @@
     "sampling_parameters": {
         "resolution": [64, 64],
         "samples_per_mask": 256,
-        "low_freq_bias_pct": 0.25
+        "sampling_pct": 0.25,
+        "core_mask_count": 1024
     },
     "bias_profile": {
         "low_freq_bias_pct": 0.15
@@ -18,7 +19,7 @@
         "dark_current_counts": 12.0
     },
     "mask_constraints": {
-        "black_leakage_pct": 0.08,
-        "white_attenuation_pct": 0.90
+        "black_leakage_pct": 0.01,
+        "white_attenuation_pct": 1.0
     }
 }
