@@ -12,7 +12,7 @@
 #define BUTTON_PIN      2  // GPIO pin connected to Button output
 #define NUM_READINGS    500 // READING PER MASK (e.g., 10 readings per mask)
 #define DELAY_MS        100
-#define HEADERSIZE      2  // For example, if we want to store a header in the file (e.g., timestamp, mask info, etc.)
+// #define HEADERSIZE      2  // For example, if we want to store a header in the file (e.g., timestamp, mask info, etc.)
 
 #define MASK_WIDTH      64
 #define MASK_HEIGHT     64
@@ -49,6 +49,10 @@ const uint16_t important_indices[NUM_IMP_INDICES] = {
     1155, 1216, 1217, 1218, 1280, 1281, 1344
 };
 
+#define NORMALIZATION   2048
+static uint16_t black_val = 0;
+static uint16_t white_val = 0;
+
 /**
  * Initialize the TTP223 capacitive touch sensor
  */
@@ -77,6 +81,32 @@ void button_wait_for_press(void) {
     }
     sleep_ms(100);  // Debounce delay
     printf("Button pressed! Starting capture sequence...\n");
+}
+
+/**
+ * a calibration sequence that updates our black and white values used for
+ * data preprocessing and normalization
+ */
+void calibrate(void) {
+    display_fill(COLOR_BLACK);
+    sleep_ms(DELAY_MS);
+    uint32_t average_reading = 0;
+    for (int i = 0; i < NUM_READINGS; i++) {
+        average_reading += sensor_read_sample();
+        sleep_us(50);
+    }
+    average_reading /= NUM_READINGS;
+    black_val = (uint16_t) average_reading;
+
+    display_fill(COLOR_WHITE);
+    sleep_ms(DELAY_MS);
+    average_reading = 0;
+    for (int i = 0; i < NUM_READINGS; i++) {
+        average_reading += sensor_read_sample();
+        sleep_us(50);
+    }
+    average_reading /= NUM_READINGS;
+    white_val = (uint16_t) average_reading;
 }
 
 int main()
@@ -122,8 +152,8 @@ int main()
         }
 
         // INITIALIZE BUFFERS FOR SENSOR READINGS AND MASKS
-        uint16_t sensor_buffer[MASK_NUM + HEADERSIZE];  // INCLUDING THE CALIBRATION READING AS THE FIRST 2 ENTRIES
-        int16_t mask_indices[MASK_NUM + HEADERSIZE];
+        uint16_t sensor_buffer[MASK_NUM];
+        int16_t mask_indices[MASK_NUM];
         uint32_t average_reading;
         uint8_t mask_buffer[MASK_HEIGHT * MASK_WIDTH];
         uint16_t mask_index;
@@ -140,27 +170,6 @@ int main()
 
         gpio_put(GREEN_LED_PIN, true);
         gpio_put(RED_LED_PIN, false);
-
-        // CALIBRATION SEQUENCE (DISPLAY CALIBRATION MASKS AND CAPTURE SENSOR READINGS)
-        display_fill(COLOR_BLACK);
-        average_reading = 0;
-        for (int i = 0; i < NUM_READINGS; i++) {
-            average_reading += sensor_read_sample();
-            sleep_us(50);
-        }
-        average_reading /= NUM_READINGS;
-        sensor_buffer[0] = (uint16_t)average_reading;
-        mask_indices[0] = -1;
-
-        display_fill(COLOR_WHITE);
-        average_reading = 0;
-        for (int i = 0; i < NUM_READINGS; i++) {
-            average_reading += sensor_read_sample();
-            sleep_us(50);
-        }
-        average_reading /= NUM_READINGS;
-        sensor_buffer[1] = (uint16_t)average_reading;
-        mask_indices[1] = -1;
 
         // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
         printf("starting shuffle...");
@@ -193,6 +202,10 @@ int main()
 
         for (int i = 0; i < MASK_NUM; i++)
         {
+            if(i % 10 == 0) {
+                calibrate();
+            }
+
             // STEP 1: DISPLAY MASK NUMBER ON LCD
             mask_index = all_indices[i];
             generate_walsh_mask(mask_index, MASK_WIDTH, MASK_HEIGHT, mask_buffer);
@@ -203,13 +216,17 @@ int main()
             
             // STEP 3: CAPTURE SENSOR READINGS
             average_reading = 0;
-            for (int i = 0; i < NUM_READINGS; i++) {
+            for (int j = 0; j < NUM_READINGS; j++) {
                 average_reading += sensor_read_sample();
                 sleep_us(50);
             }
             average_reading /= NUM_READINGS;
-            sensor_buffer[i + HEADERSIZE] = (uint16_t)average_reading;
-            mask_indices[i + HEADERSIZE] = mask_index;
+
+            uint32_t range = white_val - black_val;
+            uint16_t calibrated_reading = (uint16_t)(((average_reading - black_val) * NORMALIZATION) / range);
+
+            sensor_buffer[i] = calibrated_reading;
+            mask_indices[i] = mask_index;
 
             printf("%d. measuring mask %d: %d\n", i, mask_index, average_reading);
 
@@ -218,10 +235,10 @@ int main()
             }
         }
 
-        char csv_data[(MASK_NUM + HEADERSIZE) * (LINE_LENGTH)];
+        char csv_data[(MASK_NUM) * (LINE_LENGTH)];
         size_t data_size = 0;
 
-        for (uint16_t i = 0; i < MASK_NUM + HEADERSIZE; i++) {
+        for (uint16_t i = 0; i < MASK_NUM; i++) {
             data_size += snprintf(csv_data + data_size, sizeof(csv_data) - data_size, 
                                     "%d,%d\n", mask_indices[i], sensor_buffer[i]);
         }
