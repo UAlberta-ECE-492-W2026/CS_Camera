@@ -15,7 +15,7 @@ matlab_codebook = zeros(H, W, total_masks, 'uint8');
 for i = 0:(total_masks - 1)
     % Call your self-documenting function
     % Convert logical output to uint8 for direct comparison
-    matlab_codebook(:,:,i+1) = uint8(generate_walsh_mask(i, [H, W]));
+    matlab_codebook(:,:,i+1) = uint8(generateWalshMask(i, [H, W]));
 end
 
 disp('2. Loading C++ Codebook...');

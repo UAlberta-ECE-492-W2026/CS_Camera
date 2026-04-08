@@ -11,6 +11,12 @@ function dataMatrix = simulateCapture(img, maskList, cfg)
 %   dataMatrix - An (N+1) x 2 matrix. Row 1 contains the resolution metadata 
 %                (index -1), and the rest contain [mask_index, adc_value].
 
+%==========================================================================
+% AUTHOR:        Cole Mckay (cdmckay1@ualberta.ca)
+% DATE:          April 7, 2026
+% VERSION:       1.0
+%==========================================================================
+
     % Flatten the image into a 1D column vector and ensure double precision
     flatIMG = double(img(:));
     
@@ -41,7 +47,7 @@ function dataMatrix = simulateCapture(img, maskList, cfg)
         index = maskList(i);
         
         % Generate and apply constraints to the mask
-        mask = double(utils.generate_walsh_mask(index, cfg.sampling_parameters.resolution));
+        mask = double(utils.generateWalshMask(index, cfg.sampling_parameters.resolution));
         
         physMask = mask;
         physMask(mask == 1) = cfg.mask_constraints.white_attenuation_pct;

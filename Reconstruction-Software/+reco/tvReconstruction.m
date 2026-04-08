@@ -1,5 +1,5 @@
 function reconstructedImg = tvReconstruction(dataMatrix)
-% TVRECONSTRUCTION Builds an image using Total Variation (TV) minimization.
+% TVRECONSTRUCTION Builds an image using Edge-Preserving Total Variation minimization.
 %
 % Inputs:
 %   dataMatrix - N x 2 matrix [mask_index, adc_value]. Must contain a 
@@ -7,10 +7,14 @@ function reconstructedImg = tvReconstruction(dataMatrix)
 %
 % Outputs:
 %   reconstructedImg - The normalized 2D image matrix
+%==========================================================================
+% AUTHOR:        Cole Mckay (cdmckay1@ualberta.ca)
+% DATE:          April 7, 2026
+% VERSION:       1.0
+%==========================================================================
 
-    % 1. Extract resolution from the header row
+    % 1. Parse resolution metadata
     resRowIdx = find(dataMatrix(:, 1) == -1);
-    
     if isempty(resRowIdx)
         error('Resolution metadata not found. Missing -1 index in dataMatrix.');
     end
@@ -21,83 +25,69 @@ function reconstructedImg = tvReconstruction(dataMatrix)
     res = [W, H];
     numPixels = W * H;
     
-    % Remove the resolution metadata row
     dataMatrix(resRowIdx, :) = [];
     
-    % 2. Extract indices and measurements
+    % 2. Extract measurements and remove DC offset
     indices = dataMatrix(:, 1);
     raw_adc_values = dataMatrix(:, 2);
-    
-    % Remove DC Baseline
-    mean_val = mean(raw_adc_values);
-    y = raw_adc_values - mean_val;
+    y = raw_adc_values - mean(raw_adc_values);
     numMasks = length(indices);
     
-    fprintf('Starting TV Reconstruction for %dx%d image...\n', W, H);
-    fprintf('Building measurement matrix (this may take a moment)...\n');
+    fprintf('Starting Edge-Preserving TV Reconstruction for %dx%d image...\n', W, H);
     
-    % 3. Build the Sensing Matrix (Phi)
-    % Each row of Phi represents one flattened Walsh mask
+    % 3. Build Sensing Matrix (Phi)
     Phi = zeros(numMasks, numPixels);
     for i = 1:numMasks
-        mask = double(utils.generate_walsh_mask(indices(i), res));
+        mask = double(utils.generateWalshMask(indices(i), res));
         Phi(i, :) = mask(:)';
     end
     
-    % 4. TV Minimization Setup (Gradient Descent)
-    % --- HYPERPARAMETERS ---
-    lambda = 50;           % TV regularization weight (increase for smoother image)
-    alpha = 2*1 / norm(Phi)^2; % Step size (prevents the math from exploding)
-    max_iter = 300;          % Number of iterations to refine the image
-    epsilon = 1e-5;          % Smoothing term to prevent division by zero in gradients
+    % 4. Solver Hyperparameters
+    lambda = 50;                
+    alpha = 1.9 / norm(Phi)^2;  
+    max_iter = 300;             
+    epsilon = 1e-5;             
+    sigma = max(abs(y)) * 0.25; % Edge-stopping threshold
     
-    % Initialize the starting guess using standard linear back-projection
+    % Linear back-projection for initial state
     x = Phi' * y;
     
-    fprintf('Optimizing over %d iterations...\n', max_iter);
+    fprintf('Optimizing (iter: %d, sigma: %.3f)...\n', max_iter, sigma);
     
     % 5. Optimization Loop
     for iter = 1:max_iter
-        % Reshape current estimate back to a 2D image
         X_img = reshape(x, [H, W]);
         
-        % Calculate spatial gradients (differences between neighboring pixels)
-        Dx = [diff(X_img, 1, 2), zeros(H, 1)]; % Horizontal derivative
-        Dy = [diff(X_img, 1, 1); zeros(1, W)]; % Vertical derivative
+        % Spatial gradients
+        Dx = [diff(X_img, 1, 2), zeros(H, 1)];
+        Dy = [diff(X_img, 1, 1); zeros(1, W)];
         
-        % Gradient of the TV norm
+        edge_mag = sqrt(Dx.^2 + Dy.^2);
+        
+        % Perona-Malik weight matrix
+        W_edges = 1 ./ (1 + (edge_mag / sigma).^2);
+        
+        % Normalized and weighted gradients
         norm_grad = sqrt(Dx.^2 + Dy.^2 + epsilon);
-        grad_x = Dx ./ norm_grad;
-        grad_y = Dy ./ norm_grad;
+        weighted_grad_x = W_edges .* (Dx ./ norm_grad);
+        weighted_grad_y = W_edges .* (Dy ./ norm_grad);
         
-        % Divergence (adjoint of the gradient)
-        div_x = [grad_x(:, 1), diff(grad_x, 1, 2)];
-        div_y = [grad_y(1, :); diff(grad_y, 1, 1)];
-        tv_grad = -(div_x + div_y);
+        % Divergence (adjoint of weighted gradient)
+        div_x = [weighted_grad_x(:, 1), diff(weighted_grad_x, 1, 2)];
+        div_y = [weighted_grad_y(1, :); diff(weighted_grad_y, 1, 1)];
+        tv_grad_flat = reshape(-(div_x + div_y), [], 1);
         
-        % Flatten the TV gradient back to a 1D column
-        tv_grad_flat = tv_grad(:);
-        
-        % Calculate data fidelity gradient (how far off are we from the real measurements?)
+        % Data fidelity gradient update
         data_grad = Phi' * (Phi * x - y);
-        
-        % Update step: move against the gradient
         x = x - alpha * (data_grad + lambda * tv_grad_flat);
         
-        % Print progress
-        if mod(iter, 20) == 0
+        if mod(iter, 50) == 0
             fprintf('Iteration %d / %d completed.\n', iter, max_iter);
         end
     end
     
-    % 6. Reshape and Normalize the final output
+    % 6. Output normalization
     reconstructedImg = reshape(x, [H, W]);
-    reconstructedImg = reconstructedImg - min(reconstructedImg(:));
-    reconstructedImg = reconstructedImg / max(reconstructedImg(:));
-    
-    % % --- Display the Result ---
-    % figure('Name', 'Total Variation Reconstruction', 'Position', [850, 300, 500, 500]);
-    % imshow(reconstructedImg);
-    % title(sprintf('TV Reconstructed (Sampled %d / %d)', numMasks, numPixels));
-    % colormap gray;
+    reconstructedImg = (reconstructedImg - min(reconstructedImg(:))) / ...
+                       (max(reconstructedImg(:)) - min(reconstructedImg(:)));
 end

@@ -5,7 +5,7 @@ outputFileName = 'optimal_indices.txt';
 arrayName = 'optimalCoreIndices';
 
 % --- Call the function ---
-optimalIndices = getOptimalCore(res, numBase);
+optimalIndices = utils.getOptimalCore(res, numBase);
 
 % --- Write to File ---
 fid = fopen(outputFileName, 'w');
