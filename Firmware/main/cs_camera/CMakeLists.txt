@@ -59,6 +59,7 @@ pico_enable_stdio_usb(cs_camera 1)
 # we add the display, sensor and storage modules as dependencies to ensure they are built before the main executable
 target_link_libraries(cs_camera
         pico_stdlib
+        pico_rand
         FatFs_SPI
         display
         sensor

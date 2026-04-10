@@ -44,8 +44,8 @@ static spi_t spis[] = {  // One for each SPI.
     {   // We can change these if we end up using a different SPI 
         .hw_inst = spi1,  // SPI component
         .miso_gpio = 12,  // GPIO number (not Pico pin number)
-        .mosi_gpio = 11,
-        .sck_gpio = 10,
+        .mosi_gpio = 15,
+        .sck_gpio = 14,
 
         // .baud_rate = 1000 * 1000
         .baud_rate = 12500 * 1000
@@ -59,7 +59,7 @@ static sd_card_t sd_cards[] = {  // One for each SD card
         .spi = &spis[0],  // Pointer to the SPI driving this card
         .ss_gpio = 13,    // The SPI slave select GPIO for this SD card
         .use_card_detect = false,
-        .card_detect_gpio = 22,  // Card detect (unused)
+        .card_detect_gpio = 11,  // Card detect (unused)
         .card_detected_true = -1  // What the GPIO read returns when a card is
                                  // present.
     }};

@@ -5,6 +5,7 @@
 #include "hw_config.h"
 #include "sd_storage.h"
 #include "f_util.h"
+#include <diskio.h>
 
 
 static FATFS fs;  // File system object for each SD card.
@@ -12,6 +13,11 @@ static bool initialized = false;
 
 
 bool sd_storage_init(void) {
+
+    if (gpio_get(CD_PIN)) {
+        return false;
+    }
+
     if (initialized) {
         return true;  // Already initialized
     }
@@ -34,7 +40,7 @@ bool sd_storage_init(void) {
     
 }
 
-bool sd_write_file(const char *filename, const uint8_t *data) {
+bool sd_write_file(const char *filename, const uint8_t *data, size_t length) {
     if (!initialized) {
         printf("SD storage not initialized\n");
         return false;
@@ -48,8 +54,8 @@ bool sd_write_file(const char *filename, const uint8_t *data) {
     }
 
     UINT bytes_written;
-    res = f_write(&file, data, strlen((const char *)data), &bytes_written);
-    if (res != FR_OK || bytes_written != strlen((const char *)data)) {
+    res = f_write(&file, data, length, &bytes_written);
+    if (res != FR_OK || bytes_written != length) {
         printf("Failed to write to file: %d\n", res);
         f_close(&file);
         return false;
@@ -87,11 +93,17 @@ bool sd_read_file(const char *filename, uint8_t *buffer, size_t buffer_size) {
     return true;
 }
 
-void sd_storage_deinit(void)
-{
-    if(initialized){
-        f_unmount("0:");  // Unmount the filesystem
-        initialized = false;    
+void sd_storage_deinit(void) {
+    if (initialized) {
+        f_unmount("0:");
+        initialized = false;
+
+        // Tell the low-level driver the card is gone
+        sd_card_t *sd = sd_get_by_num(0);
+        if (sd) {
+            sd->m_Status |= (STA_NOINIT | STA_NODISK);
+        }
+
         printf("SD card unmounted.\n");
     }
 }
