@@ -5,6 +5,7 @@
 #include "hw_config.h"
 #include "sd_storage.h"
 #include "f_util.h"
+#include <diskio.h>
 
 
 static FATFS fs;  // File system object for each SD card.
@@ -92,11 +93,17 @@ bool sd_read_file(const char *filename, uint8_t *buffer, size_t buffer_size) {
     return true;
 }
 
-void sd_storage_deinit(void)
-{
-    if(initialized){
-        f_unmount("0:");  // Unmount the filesystem
-        initialized = false;    
+void sd_storage_deinit(void) {
+    if (initialized) {
+        f_unmount("0:");
+        initialized = false;
+
+        // Tell the low-level driver the card is gone
+        sd_card_t *sd = sd_get_by_num(0);
+        if (sd) {
+            sd->m_Status |= (STA_NOINIT | STA_NODISK);
+        }
+
         printf("SD card unmounted.\n");
     }
 }

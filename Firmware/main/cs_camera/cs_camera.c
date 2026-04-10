@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "pico/stdlib.h"
 #include "pico/rand.h"
 // #include "pico/gpio.h"
@@ -7,6 +8,7 @@
 #include "lcd_controller.h"
 #include "sd_storage.h"
 #include "WalshMaskGenerator.h"
+#include "ff.h"
 
 #define MASK_NUM        1024
 #define BUTTON_PIN      2  // GPIO pin connected to Button output
@@ -122,6 +124,8 @@ void calibrate(void) {
     average_reading /= NUM_READINGS;
     white_val = (uint16_t) average_reading;
 }
+
+bool get_next_filename(char *out, size_t out_size, const char *prefix, const char *ext);
 
 int main()
 {
@@ -257,7 +261,8 @@ int main()
 
         sd_storage_init();
         // WRITE BUFFER TO SD CARD
-        const char *filename = "sensor_data.csv";
+        char filename[32];
+        get_next_filename(filename, sizeof(filename), "photo", "csv");
         if (sd_write_file(filename, csv_data, data_size)) {
             printf("Successfully wrote sensor data to SD card: %s (%zu bytes)\n", filename, data_size);
         } else {
@@ -271,4 +276,38 @@ int main()
         // DEINITIALIZE SD STORAGE
         sd_storage_deinit();
     }
+}
+
+bool get_next_filename(char *out, size_t out_size, const char *prefix, const char *ext) {
+    DIR dir;
+    FILINFO fno;
+
+    FRESULT res = f_opendir(&dir, "0:/");
+    if (res != FR_OK) {
+        snprintf(out, out_size, "%s1.%s", prefix, ext);
+        return false;
+    }
+
+    int max_index = 0;
+    size_t prefix_len = strlen(prefix);
+
+    while (f_readdir(&dir, &fno) == FR_OK && fno.fname[0] != '\0') {
+        // Check prefix matches
+        if (strncmp(fno.fname, prefix, prefix_len) != 0)
+            continue;
+
+        // Check extension matches
+        char *dot = strrchr(fno.fname, '.');
+        if (!dot || strcmp(dot + 1, ext) != 0)
+            continue;
+
+        // Parse the number between prefix and extension
+        int index = atoi(fno.fname + prefix_len);
+        if (index > max_index)
+            max_index = index;
+    }
+
+    f_closedir(&dir);
+    snprintf(out, out_size, "%s%d.%s", prefix, max_index + 1, ext);
+    return true;
 }
