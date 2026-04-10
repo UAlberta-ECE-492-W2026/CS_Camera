@@ -1,13 +1,23 @@
-% =========================================================================
-% SCRIPT_NAME: test_emulateCameraCapture.m
-% PURPOSE:     Tests the emulateCameraCapture function to ensure it crops,
-%              resizes, and simulates the capture correctly.
-% =========================================================================
-clear; clc; close all;
+%==========================================================================
+% SCRIPT_NAME:  test_emulateCameraCapture.m
+%
+% PURPOSE:      Tests the emulateCameraCapture function to ensure it 
+%               correctly crops, resizes, and simulates the hardware 
+%               capture process.
+%
+% AUTHOR:       Cole Mckay (cdmckay1@ualberta.ca)
+% DATE:         April 10, 2026
+% VERSION:      1.0
+%
+% NOTES:        Validates output dimensions, value ranges, and provides 
+%               visual verification of the simulated hardware capture 
+%               and simple reconstruction.
+%==========================================================================
 
+clear; clc; close all;
 fprintf('--- Starting Test --- \n');
 
-% 1. Setup global parameters (using your existing namespace functions)
+% 1. Setup global parameters
 fprintf('Loading configuration and masks...\n');
 cfg = utils.loadConfig('camera_settings.json');
 maskList = utils.selectMaskIndexes(utils.getOptimalCore(cfg.sampling_parameters.resolution, ...
@@ -15,7 +25,7 @@ maskList = utils.selectMaskIndexes(utils.getOptimalCore(cfg.sampling_parameters.
     cfg.sampling_parameters.resolution);
 
 % 2. Define a test image
-% Using MATLAB's built-in image so it runs instantly
+% Using a sample image from the local directory
 testImagePath = 'images/3096.jpg'; 
 
 % 3. Call the function

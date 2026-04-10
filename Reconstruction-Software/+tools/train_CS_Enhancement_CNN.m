@@ -1,15 +1,23 @@
 %==========================================================================
-% SCRIPT_NAME: train_CS_Enhancement_CNN.m
+% SCRIPT_NAME:  train_CS_Enhancement_CNN.m
 %
-% PURPOSE:     Loads the generated Compressive Sensing dataset, applies the 
-%              initial linear projection, and trains a Convolutional Neural 
-%              Network to map the noisy reconstructions to the ground truth.
+% PURPOSE:      Loads the Compressive Sensing dataset, applies linear 
+%               projection to raw measurements, and trains a residual CNN 
+%               to map noisy reconstructions to ground truth images.
+%
+% AUTHOR:       Cole Mckay (cdmckay1@ualberta.ca)
+% DATE:         April 10, 2026
+% VERSION:      1.0
+%
+% NOTES:        Requires 'cnn_training_data_50p.mat' and configuration 
+%               settings. Saves the trained ResNet model to the '+models' 
+%               directory for use in the main processing pipeline.
 %==========================================================================
-clear; clc; close all;
 
+clear; clc; close all;
 parallel.gpu.enableCUDAForwardCompatibility(true);
 
-% Resolve paths dynamically based on the script's new location in +tools
+% Resolve paths dynamically based on the script's location
 currentScriptDir = fileparts(mfilename('fullpath'));
 projectRoot = fileparts(currentScriptDir); % Step up to root
 dataDir = fullfile(projectRoot, 'data');
@@ -22,11 +30,9 @@ load(dataPath, 'X_train_raw', 'Y_train', 'maskList');
 % Load configuration from the 'configs' directory
 configPath = fullfile(projectRoot, 'configs', 'camera_settings.json');
 cfg = utils.loadConfig(configPath);
-
 resValue = cfg.sampling_parameters.resolution(1);
 res = [resValue, resValue];
 numPixels = resValue * resValue;
-
 numMasks = length(maskList);
 numImages = size(X_train_raw, 4);
 
@@ -39,7 +45,6 @@ end
 
 fprintf('Projecting raw 1D measurements into 2D initial guesses...\n');
 X_train_2D = zeros(resValue, resValue, 1, numImages);
-
 for i = 1:numImages
     % Extract the 1D ADC values for this image and remove DC baseline
     y = squeeze(X_train_raw(:, 1, 1, i));
@@ -59,7 +64,7 @@ for i = 1:numImages
 end
 
 fprintf('Defining CNN Architecture...\n');
-% A 3-layer fully-convolutional network tailored for image restoration
+% Base layers definition
 layers = [
     imageInputLayer([resValue resValue 1], 'Name', 'InputLayer', 'Normalization', 'none')
     
@@ -77,14 +82,13 @@ layers = [
     regressionLayer('Name', 'RegressionLoss')
 ];
 
-% 1. Initialize an empty layer graph
+% 1. Initialize layer graph for residual network
 lgraph = layerGraph();
 
-% 2. Add the main input layer
+% 2. Add main input layer
 lgraph = addLayers(lgraph, imageInputLayer([resValue resValue 1], 'Name', 'Input', 'Normalization', 'none'));
 
-% 3. Create the "Residual Branch" 
-% This branch ONLY learns what the Walsh-Hadamard artifacts look like
+% 3. Create the Residual Branch to isolate Walsh-Hadamard artifacts
 artifactBranch = [
     convolution2dLayer(5, 64, 'Padding', 'same', 'Name', 'Conv1')
     reluLayer('Name', 'ReLU1')
@@ -94,25 +98,21 @@ artifactBranch = [
 ];
 lgraph = addLayers(lgraph, artifactBranch);
 
-% 4. Add the combination and loss layers
+% 4. Add combination and loss layers
 lgraph = addLayers(lgraph, additionLayer(2, 'Name', 'Add'));
 lgraph = addLayers(lgraph, regressionLayer('Name', 'Loss'));
 
-% 5. Wire the graph together
-% Connect the input to the start of the artifact branch
+% 5. Connect the network layers
+% Connect input to the start of the artifact branch
 lgraph = connectLayers(lgraph, 'Input', 'Conv1');
-
-% Pass the original image straight to the addition layer (Bypassing the convolutions)
+% Bypass convolutions to pass original image straight to addition layer
 lgraph = connectLayers(lgraph, 'Input', 'Add/in1');
-
-% Pass the isolated artifacts to the addition layer
+% Pass isolated artifacts to addition layer
 lgraph = connectLayers(lgraph, 'Conv3', 'Add/in2');
-
-% Send the final cleaned image to the loss calculator
+% Output combined image to loss calculator
 lgraph = connectLayers(lgraph, 'Add', 'Loss');
 
-% Set training options. If an NVIDIA GPU like the RTX 4060 Ti is available, 
-% the 'auto' environment will automatically leverage it to accelerate training.
+% Set training options
 options = trainingOptions('adam', ...
     'InitialLearnRate', 1e-3, ...
     'MaxEpochs', 50, ...
@@ -138,7 +138,7 @@ save(outputModelPath, 'net');
 fprintf('Training complete! Network saved as: %s\n', outputModelPath);
 
 % --- Visual Validation on a Training Sample ---
-% Grab the first image to see how well the network learned to fix it
+% Extract the first image array to validate enhancement visually
 test_input = X_train_2D(:, :, 1, 1);
 ground_truth = Y_train(:, :, 1, 1);
 test_output = predict(net, test_input);

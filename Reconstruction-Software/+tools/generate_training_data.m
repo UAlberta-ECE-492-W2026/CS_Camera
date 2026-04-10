@@ -11,15 +11,19 @@
 % NOTES:        Requires Parallel Computing Toolbox. Ensure the 
 %               'tiny-imagenet-200' folder is in the root /images/ directory.
 %==========================================================================
+
 clear; clc;
 
 fprintf('Loading configuration and masks...\n');
-% Load configuration and calculate masks using your existing utilities
+
+% Load configuration and calculate masks 
 cfg = utils.loadConfig('camera_settings.json');
 
 fprintf('Starting parallel pool...\n');
+
 % 1. Detect the total number of logical cores using the Java environment
 numLogicalCores = java.lang.Runtime.getRuntime().availableProcessors();
+
 % 2. Calculate n-1 workers, ensuring we never request fewer than 1 worker
 numWorkers = max(1, numLogicalCores - 1);
 fprintf('Detected %d logical cores. Configuring pool for %d workers...\n', numLogicalCores, numWorkers);
@@ -40,13 +44,12 @@ maskList = utils.selectMaskIndexes(utils.getOptimalCore(cfg.sampling_parameters.
     cfg.sampling_parameters.resolution);
 
 % Set the path to the dataset
-% 1. Get the folder where this script is currently saved (e.g., +tools)
 scriptDir = fileparts(mfilename('fullpath'));
 
-% 2. Navigate up one level to the project root
+% Navigate up one level to the project root
 rootDir = fileparts(scriptDir);
 
-% 3. Build a portable path to the dataset from the root
+% Build a portable path to the dataset from the root
 datasetPath = fullfile(rootDir, 'images', 'tiny-imagenet-200', 'train');
 fprintf('Checking image datastore at %s...\n', datasetPath);
 imds = imageDatastore(datasetPath, 'IncludeSubfolders', true);
@@ -82,7 +85,7 @@ parfor i = 1:numImages
     % Read image from the datastore
     rawImg = readimage(imds, i);
     
-    % Pass through your emulator function
+    % Pass through emulator function
     [camera_data, ground_truth] = utils.emulateCameraCapture(rawImg, cfg, maskList);
     
     % Store the results

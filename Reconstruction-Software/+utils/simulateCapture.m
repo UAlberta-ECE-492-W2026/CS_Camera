@@ -70,7 +70,7 @@ function dataMatrix = simulateCapture(img, maskList, cfg)
         % --- APPLY ADC HARDWARE LIMITS (CLIPPING) ---
         finalSignal = min(max(avgSignal, 0), satLimit);
         
-        % Store the result (shifted by 1 to protect the resolution header)
+        % Store the result
         dataMatrix(i + 1, :) = [index, round(finalSignal)];
     end
 end
