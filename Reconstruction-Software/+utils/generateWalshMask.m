@@ -1,25 +1,19 @@
+function mask = generateWalshMask(index, resolution)
+% GENERATEWALSHMASK Generates a 2D Walsh-Hadamard mask using sequency ordering.
+%
+% Inputs:
+%   index      - The 0-indexed mask number (e.g., 0 to 4095)
+%   resolution - The [height, width] of the mask
+%
+% Outputs:
+%   mask       - The generated 2D logical binary mask (1=White, 0=Black)
+
 %==========================================================================
-% FUNCTION_NAME: generate_walsh_mask.m
-% PURPOSE:       Generates a 2D Walsh-Hadamard mask for a given index and 
-%                resolution using sequency ordering (Gray code + bit reversal).
 % AUTHOR:        Cole Mckay (cdmckay1@ualberta.ca)
-% DATE:          March 5, 2026
-% VERSION:       1.0
-%
-% INPUTS:        index      - (Integer) The 0-indexed mask number (e.g., 0 to 4095)
-%                resolution - (1x2 Array) The [height, width] of the mask
-% OUTPUTS:       mask       - (2D Logical Array) The generated binary mask (1=White, 0=Black)
-%
-% DEPENDENCIES:  None
-%==========================================================================
-% REVISION HISTORY:
-% 0.0 - Create File
-% 1.0 - Added 2D separable logic with bit-reversal for correct sequency
-%       and updated variables to be self-documenting.
+% DATE:          April 7, 2026
+% VERSION:       2.0
 %==========================================================================
 
-function mask = generate_walsh_mask(index, resolution)
-    
     img_height = resolution(1);
     img_width  = resolution(2);
     

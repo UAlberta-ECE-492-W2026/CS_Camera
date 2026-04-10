@@ -1,0 +1,5 @@
+# Ignore MATLAB package data folder
+data/
+
+# Ignore training images dataset
+images/

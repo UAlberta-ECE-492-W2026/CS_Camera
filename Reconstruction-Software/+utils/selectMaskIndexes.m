@@ -1,7 +1,19 @@
 function selectedIndexes = selectMaskIndexes(initialIndices, samplingPercentage, res)
-    % initialIndices: The array from getOptimalCore
-    % samplingPercentage: 0 to 100
-    % res: The resolution of the mask (e.g., 64)
+% SELECTMASKINDEXES Samples additional random indices to reach a target sampling density.
+%
+% Inputs:
+%   initialIndices     - Array of base/optimal mask indices to include
+%   samplingPercentage - Target density (expressed as a fraction, e.g., 0.1 for 10%)
+%   res                - Resolution of the mask grid [width, height]
+%
+% Outputs:
+%   selectedIndexes    - Combined and sorted array of mask indices
+
+%==========================================================================
+% AUTHOR:        Cole Mckay (cdmckay1@ualberta.ca)
+% DATE:          April 7, 2026
+% VERSION:       1.0
+%==========================================================================
     
     W = res(1);
     H = res(2);

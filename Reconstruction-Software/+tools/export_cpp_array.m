@@ -1,3 +1,20 @@
+%==========================================================================
+% SCRIPT_NAME:  export_optimal_indices.m
+%
+% PURPOSE:      Generates optimal core indices based on grid resolution 
+%               and exports them to a formatted C++ array for hardware 
+%               implementation.
+%
+% AUTHOR:       Cole Mckay (cdmckay1@ualberta.ca)
+% DATE:         April 10, 2026
+% VERSION:      1.0
+%
+% NOTES:        Outputs a text file (optimal_indices.txt) containing a 
+%               C++ constant integer array (optimalCoreIndices). Designed 
+%               to bridge MATLAB index calculations with the microcontroller 
+%               firmware (e.g., Raspberry Pi Pico 2 / ESP32).
+%==========================================================================
+
 % --- Configuration ---
 res = [64, 64];           % Grid resolution
 numBase = 256;            % Number of indices to extract
@@ -5,7 +22,7 @@ outputFileName = 'optimal_indices.txt';
 arrayName = 'optimalCoreIndices';
 
 % --- Call the function ---
-optimalIndices = getOptimalCore(res, numBase);
+optimalIndices = utils.getOptimalCore(res, numBase);
 
 % --- Write to File ---
 fid = fopen(outputFileName, 'w');
@@ -33,5 +50,4 @@ end
 % Close the array and file
 fprintf(fid, '\n};');
 fclose(fid);
-
 fprintf('Success! C++ array saved to %s\n', outputFileName);
