@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define CD_PIN 11
+
 /**
  * Initialize the SD card storage system
  * @return true if successful, false otherwise

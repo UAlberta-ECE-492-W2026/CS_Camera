@@ -75,8 +75,22 @@ bool button_is_pressed(void) {
  * This function blocks until the button is pressed
  */
 void button_wait_for_press(void) {
+    gpio_put(RED_LED_PIN, false);
+    bool red_on = false;
+    bool sd_present = false;
+
     printf("Waiting for TTP223 button press to start capture...\n");
-    while (!button_is_pressed()) {
+
+    uint8_t counter = 0;
+    while (!button_is_pressed() || !sd_present) {
+        sd_present = !gpio_get(CD_PIN);
+        counter = (counter + 1) % 10;
+        if(counter == 0){
+            red_on = !red_on;
+        }
+
+        gpio_put(RED_LED_PIN, red_on && !sd_present);
+        gpio_put(GREEN_LED_PIN, sd_present);
         sleep_ms(50);  // Check every 50ms
     }
     sleep_ms(100);  // Debounce delay
@@ -116,18 +130,15 @@ int main()
 
     gpio_init(GREEN_LED_PIN);
     gpio_init(RED_LED_PIN);
-
+    gpio_init(CD_PIN);
+    
     gpio_set_dir(GREEN_LED_PIN, true);
     gpio_set_dir(RED_LED_PIN, true);
-
+    gpio_set_dir(CD_PIN, GPIO_IN);
+    
     gpio_put(GREEN_LED_PIN, false);
     gpio_put(RED_LED_PIN, true);
-
-    for(uint8_t i = 0; i < 15; i++) {
-        printf("Waiting to initialize... %d/15\n", i+1);
-        gpio_put(RED_LED_PIN, i % 2 == 0);
-        sleep_ms(1000);
-    }
+    gpio_pull_up(CD_PIN);
 
     while(true) {
 
@@ -143,11 +154,6 @@ int main()
 
         if (!sensor_init()) {
             printf("Failed to initialize sensor\n");
-            return 1;
-        }
-
-        if (!sd_storage_init()) {
-            printf("Failed to initialize SD storage\n");
             return 1;
         }
 
@@ -249,6 +255,7 @@ int main()
                                     "%d,%d\n", mask_indices[i], sensor_buffer[i]);
         }
 
+        sd_storage_init();
         // WRITE BUFFER TO SD CARD
         const char *filename = "sensor_data.csv";
         if (sd_write_file(filename, csv_data, data_size)) {

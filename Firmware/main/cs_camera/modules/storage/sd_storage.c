@@ -12,6 +12,11 @@ static bool initialized = false;
 
 
 bool sd_storage_init(void) {
+
+    if (gpio_get(CD_PIN)) {
+        return false;
+    }
+
     if (initialized) {
         return true;  // Already initialized
     }
