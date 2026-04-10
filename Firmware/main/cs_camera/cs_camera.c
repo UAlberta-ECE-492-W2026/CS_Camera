@@ -12,7 +12,7 @@
 #define BUTTON_PIN      2  // GPIO pin connected to Button output
 #define NUM_READINGS    500 // READING PER MASK (e.g., 10 readings per mask)
 #define DELAY_MS        100
-// #define HEADERSIZE      2  // For example, if we want to store a header in the file (e.g., timestamp, mask info, etc.)
+#define HEADERSIZE      1  // For example, if we want to store a header in the file (e.g., timestamp, mask info, etc.)
 
 #define MASK_WIDTH      64
 #define MASK_HEIGHT     64
@@ -152,11 +152,13 @@ int main()
         }
 
         // INITIALIZE BUFFERS FOR SENSOR READINGS AND MASKS
-        uint16_t sensor_buffer[MASK_NUM];
-        int16_t mask_indices[MASK_NUM];
-        uint32_t average_reading;
-        uint8_t mask_buffer[MASK_HEIGHT * MASK_WIDTH];
-        uint16_t mask_index;
+        uint16_t sensor_buffer[HEADERSIZE + MASK_NUM] = {0};
+        int16_t mask_indices[HEADERSIZE + MASK_NUM] = {0};
+        uint8_t mask_buffer[MASK_HEIGHT * MASK_WIDTH] = {0};
+        uint16_t mask_index = 0;
+
+        sensor_buffer[0] = 64;
+        mask_indices[0] = -1;
 
         gpio_put(RED_LED_PIN, false);
         gpio_put(GREEN_LED_PIN, true);
@@ -200,7 +202,8 @@ int main()
         printf(" Done!\n");
         // ----- Fisher-Yates shuffle to generate random, non-repeating sequence -----
 
-        for (int i = 0; i < MASK_NUM; i++)
+        // ----- Take readings and save them into buffer -----
+        for (int i = HEADERSIZE; i < MASK_NUM + HEADERSIZE; i++)
         {
             if(i % 10 == 0) {
                 calibrate();
@@ -215,30 +218,33 @@ int main()
             sleep_ms(DELAY_MS);
             
             // STEP 3: CAPTURE SENSOR READINGS
-            average_reading = 0;
+            uint32_t average_reading = 0;
             for (int j = 0; j < NUM_READINGS; j++) {
                 average_reading += sensor_read_sample();
                 sleep_us(50);
             }
-            average_reading /= NUM_READINGS;
 
             uint32_t range = white_val - black_val;
-            uint16_t calibrated_reading = (uint16_t)(((average_reading - black_val) * NORMALIZATION) / range);
-
+            uint32_t floored = (average_reading < black_val) ? 0 : average_reading - black_val;
+            uint16_t calibrated_reading = (uint16_t)((floored * NORMALIZATION) / range);
+            
             sensor_buffer[i] = calibrated_reading;
+
             mask_indices[i] = mask_index;
 
-            printf("%d. measuring mask %d: %d\n", i, mask_index, average_reading);
+            printf("%d. measuring mask %d: %d\n", i, mask_index, calibrated_reading);
 
             if(i % 5 == 0) {
                 gpio_put(GREEN_LED_PIN, i % 10 == 0);
             }
         }
+        // ----- Take readings and save them into buffer -----
 
-        char csv_data[(MASK_NUM) * (LINE_LENGTH)];
+        // ----- Save data into csv on the SD card -----
+        char csv_data[(MASK_NUM + HEADERSIZE) * (LINE_LENGTH)];
         size_t data_size = 0;
 
-        for (uint16_t i = 0; i < MASK_NUM; i++) {
+        for (uint16_t i = 0; i < MASK_NUM + HEADERSIZE; i++) {
             data_size += snprintf(csv_data + data_size, sizeof(csv_data) - data_size, 
                                     "%d,%d\n", mask_indices[i], sensor_buffer[i]);
         }
@@ -250,6 +256,7 @@ int main()
         } else {
             printf("Failed to write sensor data to SD card\n");
         }
+        // ----- Save data into csv on the SD card -----
 
         gpio_put(GREEN_LED_PIN, true);
         gpio_put(RED_LED_PIN, false);
